@@ -29,12 +29,19 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!fiche) return NextResponse.json({ error: "Fiche introuvable" }, { status: 404 });
 
   // Un machiniste ne peut voir que la fiche de la machine qui lui est assignée
-  if (role === Role.MACHINISTE) {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (user?.assignedTemplateId && fiche.templateId !== user.assignedTemplateId) {
-      return NextResponse.json({ error: "Cette fiche ne vous est pas assignée" }, { status: 403 });
-    }
+if (role === Role.MACHINISTE) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { assignedTemplates: true }
+  });
+
+  const hasRestriction = user?.assignedTemplates && user.assignedTemplates.length > 0;
+  const isAssigned = user?.assignedTemplates.some(t => t.id === fiche.templateId);
+
+  if (hasRestriction && !isAssigned) {
+    return NextResponse.json({ error: "Cette fiche ne vous est pas assignée" }, { status: 403 });
   }
+}
 
   // Nom de la personne responsable de l'étape en cours (affiché dans "Statut actuel")
   let responsableName: string | null = null;
