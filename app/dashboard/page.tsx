@@ -24,7 +24,7 @@ export default async function Dashboard() {
       where: { id: userId },
       include: { assignedTemplates: true },
     });
-    const ids = user?.assignedTemplates.map((t) => t.id) ?? [];
+    const ids = user?.assignedTemplates?.map((t) => t.id) ?? [];
     assignedTemplateIds = ids.length > 0 ? new Set(ids) : null;
   }
 
