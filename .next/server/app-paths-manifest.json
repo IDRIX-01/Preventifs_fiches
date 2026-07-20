@@ -1,0 +1,10 @@
+{
+  "/page": "app/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/fiches/[id]/page": "app/fiches/[id]/page.js",
+  "/api/users/route": "app/api/users/route.js",
+  "/login/page": "app/login/page.js",
+  "/api/cron/generate-fiches/route": "app/api/cron/generate-fiches/route.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/fiches/[id]/route": "app/api/fiches/[id]/route.js"
+}
