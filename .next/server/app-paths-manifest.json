@@ -1,5 +1,18 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
+  "/admin/templates/page": "app/admin/templates/page.js",
+  "/admin/fiches/new/page": "app/admin/fiches/new/page.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/cron/generate-fiches/route": "app/api/cron/generate-fiches/route.js",
+  "/api/fiches/[id]/route": "app/api/fiches/[id]/route.js",
+  "/api/fiches/[id]/print/route": "app/api/fiches/[id]/print/route.js",
+  "/api/fiches/route": "app/api/fiches/route.js",
+  "/api/templates/route": "app/api/templates/route.js",
+  "/admin/users/page": "app/admin/users/page.js",
+  "/api/users/route": "app/api/users/route.js",
+  "/fiches/[id]/page": "app/fiches/[id]/page.js",
+  "/page": "app/page.js",
   "/login/page": "app/login/page.js",
+  "/admin/archives/page": "app/admin/archives/page.js",
   "/dashboard/page": "app/dashboard/page.js"
 }
