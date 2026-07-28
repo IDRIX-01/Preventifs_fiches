@@ -16,10 +16,13 @@ export default async function Dashboard() {
   const userId = (session.user as any).id as string;
   const userName = session.user?.name as string;
 
-  // Machiniste : récupère la liste des fiches qui lui sont assignées
-  // (pour griser toutes les autres). Une liste vide = pas de restriction.
+  // Machiniste ET maintenancier : le maintenancier renseigne les fiches à
+  // la même étape qu'un machiniste (voir lib/workflow.ts), mais uniquement
+  // sur les fiches qui lui sont assignées (chiller/convoyeur). On récupère
+  // donc sa liste de fiches assignées de la même façon. Une liste vide
+  // = pas de restriction (cas des machinistes classiques).
   let assignedTemplateIds: Set<string> | null = null;
-  if (role === Role.MACHINISTE) {
+  if (role === Role.MACHINISTE || role === Role.MAINTENANCIER) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { assignedTemplates: true },
@@ -28,28 +31,46 @@ export default async function Dashboard() {
     assignedTemplateIds = ids.length > 0 ? new Set(ids) : null;
   }
 
-  const fiches = await prisma.ficheInstance.findMany({
-    where:
-      role === Role.ADMIN
-        ? {}
-        : role === Role.CHEF_EQUIPE
-        ? {
-            OR: [
-              { status: Role.CHEF_EQUIPE, superviseur: userName }, // c'est son tour, désigné par le machiniste
-              { signatures: { some: { role } } }, // historique : fiches déjà signées par lui
-            ],
-          }
-        : role === Role.MACHINISTE
-        ? {
-            OR: [
-              { status: Role.MACHINISTE }, // en attente de saisie
-              { machinisteNom: userName }, // historique : déjà renseignées et transmises par lui
-            ],
-          }
-        : { OR: [{ status: role as any }, { signatures: { some: { role } } }] },
+  // Une fiche archivée ne doit plus apparaître dans la liste par ligne,
+  // quel que soit le rôle — elle reste consultable uniquement via
+  // /admin/archives. On combine ce filtre avec la logique existante
+  // propre à chaque rôle via un AND.
+  const roleFilter =
+    role === Role.ADMIN
+      ? {}
+      : role === Role.CHEF_EQUIPE
+      ? {
+          OR: [
+            { status: Role.CHEF_EQUIPE, superviseur: userName }, // c'est son tour, désigné par le machiniste
+            { signatures: { some: { role } } }, // historique : fiches déjà signées par lui
+          ],
+        }
+      : role === Role.MACHINISTE || role === Role.MAINTENANCIER
+      ? {
+          OR: [
+            { status: Role.MACHINISTE }, // en attente de saisie (le maintenancier agit comme un machiniste)
+            { machinisteNom: userName }, // historique : déjà renseignées et transmises par lui
+          ],
+        }
+      : { OR: [{ status: role as any }, { signatures: { some: { role } } }] };
+
+  const fichesBrutes = await prisma.ficheInstance.findMany({
+    where: {
+      AND: [roleFilter, { status: { not: "ARCHIVE" } }],
+    },
     include: { template: true, signatures: true },
     orderBy: { createdAt: "desc" },
   });
+
+  // Pour un utilisateur avec accès restreint (maintenancier, ou un
+  // machiniste à qui on aurait assigné des fiches spécifiques), on ne
+  // garde que ses fiches assignées + celles qu'il a déjà traitées.
+  // Les autres rôles (assignedTemplateIds === null) ne sont pas filtrés ici.
+  const fiches = assignedTemplateIds
+    ? fichesBrutes.filter(
+        (f) => assignedTemplateIds!.has(f.templateId) || f.machinisteNom === userName,
+      )
+    : fichesBrutes;
 
   const fichesParSysteme = fiches.reduce((acc: Record<string, typeof fiches>, f) => {
     const systeme = f.template.systeme;
@@ -62,21 +83,22 @@ export default async function Dashboard() {
 
   // Version allégée et sérialisable (pas d'objets Date) à passer au
   // composant client MachinisteFicheSelector.
-  const fichesParSystemeLite = role === Role.MACHINISTE
-    ? Object.fromEntries(
-        Object.entries(fichesParSysteme).map(([systeme, list]) => [
-          systeme,
-          list.map((f) => ({
-            id: f.id,
-            numeroOT: f.numeroOT,
-            status: f.status,
-            machinisteNom: f.machinisteNom,
-            templateId: f.templateId,
-            template: { titre: f.template.titre, systeme: f.template.systeme },
-          })),
-        ])
-      )
-    : {};
+  const fichesParSystemeLite =
+    role === Role.MACHINISTE || role === Role.MAINTENANCIER
+      ? Object.fromEntries(
+          Object.entries(fichesParSysteme).map(([systeme, list]) => [
+            systeme,
+            list.map((f) => ({
+              id: f.id,
+              numeroOT: f.numeroOT,
+              status: f.status,
+              machinisteNom: f.machinisteNom,
+              templateId: f.templateId,
+              template: { titre: f.template.titre, systeme: f.template.systeme },
+            })),
+          ]),
+        )
+      : {};
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-4 sm:p-6">
@@ -104,7 +126,7 @@ export default async function Dashboard() {
         </div>
       </div>
 
-      {role === Role.MACHINISTE ? (
+      {role === Role.MACHINISTE || role === Role.MAINTENANCIER ? (
         <MachinisteFicheSelector
           fichesParSysteme={fichesParSystemeLite}
           assignedTemplateIds={assignedTemplateIds ? Array.from(assignedTemplateIds) : null}

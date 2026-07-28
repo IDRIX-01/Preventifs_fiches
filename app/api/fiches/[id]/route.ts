@@ -15,6 +15,16 @@ const WORKFLOW: string[] = [
 
 const SINGLE_PERSON_ROLES = ["RESPONSABLE_PRODUCTION", "RESPONSABLE_MAINTENANCE", "DIRECTEUR_TECHNIQUE"];
 
+/**
+ * Le MAINTENANCIER n'a pas d'étape dédiée dans le workflow : il agit
+ * exactement comme un MACHINISTE à l'étape MACHINISTE (voir lib/workflow.ts,
+ * normalizeRoleForWorkflow). On applique la même règle ici pour que les
+ * comparaisons de statut/rôle dans cette route restent cohérentes.
+ */
+function normalizeRoleForWorkflow(role: Role): Role {
+  return role === Role.MAINTENANCIER ? Role.MACHINISTE : role;
+}
+
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
@@ -28,8 +38,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   });
   if (!fiche) return NextResponse.json({ error: "Fiche introuvable" }, { status: 404 });
 
-  // Un machiniste ne peut voir que la fiche de la machine qui lui est assignée
-  if (role === Role.MACHINISTE) {
+  // Un machiniste (ou un maintenancier, qui agit comme lui) ne peut voir que
+  // la fiche de la machine qui lui est assignée.
+  if (role === Role.MACHINISTE || role === Role.MAINTENANCIER) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { assignedTemplates: true },
@@ -72,6 +83,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!session) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
   const role = (session.user as any).role as Role;
+  const effectiveRole = normalizeRoleForWorkflow(role);
   const userId = (session.user as any).id as string;
   const userName = session.user?.name as string;
   const body = await req.json();
@@ -79,12 +91,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const fiche = await prisma.ficheInstance.findUnique({ where: { id: params.id } });
   if (!fiche) return NextResponse.json({ error: "Fiche introuvable" }, { status: 404 });
 
-  if (fiche.status !== role) {
+  // On compare le statut de la fiche au rôle "canonique" (le maintenancier
+  // compte comme machiniste ici), sinon il est toujours rejeté à tort.
+  if (fiche.status !== effectiveRole) {
     return NextResponse.json({ error: "Ce n'est pas votre tour" }, { status: 403 });
   }
 
-  // Un machiniste ne peut modifier que la fiche de la machine qui lui est assignée
-  if (role === Role.MACHINISTE) {
+  // Un machiniste (ou un maintenancier) ne peut modifier que la fiche de la
+  // machine qui lui est assignée.
+  if (role === Role.MACHINISTE || role === Role.MAINTENANCIER) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { assignedTemplates: true },
@@ -106,7 +121,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const currentIndex = WORKFLOW.indexOf(fiche.status);
   const nextStatus = WORKFLOW[currentIndex + 1];
 
-  if (body.action === "transmettre" && role === Role.MACHINISTE) {
+  if (body.action === "transmettre" && effectiveRole === Role.MACHINISTE) {
     const updated = await prisma.ficheInstance.update({
       where: { id: params.id },
       data: {

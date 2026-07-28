@@ -4,6 +4,13 @@ import { useState } from "react";
 import { Role } from "@/lib/enums";
 import SignaturePad from "./SignaturePad";
 
+// Chef d'équipe unique et imposé pour les fiches chillers/convoyeurs
+// traitées par un maintenancier (pas de choix possible dans ce cas).
+const CHEF_EQUIPE_MAINTENANCE = {
+  username: "6488",
+  name: "BIAGNE DIPLOH ANGE MONDESIR",
+};
+
 type Props = {
   fiche: any;
   currentUserRole: Role;
@@ -24,7 +31,11 @@ export default function FicheView({
   onSign,
 }: Props) {
   const t = fiche.template;
-  const isMachinisteStep = currentUserRole === Role.MACHINISTE && editable;
+  const isMaintenancier = currentUserRole === Role.MAINTENANCIER;
+  // Le maintenancier renseigne la fiche à la même étape qu'un machiniste
+  // (voir lib/workflow.ts) : nom auto-identifié, heures éditables, etc.
+  const isMachinisteStep =
+    (currentUserRole === Role.MACHINISTE || isMaintenancier) && editable;
 
   const [actionsCochees, setActionsCochees] = useState(fiche.actionsCochees ?? {});
   const [dateEntretien, setDateEntretien] = useState(
@@ -33,7 +44,11 @@ export default function FicheView({
   const [heureDebut, setHeureDebut] = useState(fiche.heureDebut ?? "");
   const [heureFin, setHeureFin] = useState(fiche.heureFin ?? "");
   const [observation, setObservation] = useState(fiche.observation ?? "");
-  const [chefEquipeChoice, setChefEquipeChoice] = useState("");
+  // Pour un maintenancier, le chef d'équipe destinataire est fixe et
+  // pré-rempli : aucun choix à faire.
+  const [chefEquipeChoice, setChefEquipeChoice] = useState(
+    isMaintenancier ? CHEF_EQUIPE_MAINTENANCE.name : ""
+  );
   const [signingRole, setSigningRole] = useState<Role | null>(null);
 
   function handleTransmettre() {
@@ -88,30 +103,39 @@ export default function FicheView({
         <div>Superviseur : {fiche.superviseur || "—"}</div>
         <div>
           Statut actuel :{" "}
-          <span className="font-semibold">{fiche.responsableName ?? fiche.status}</span>
+          <span className="font-semibold">
+            {fiche.status === "MACHINISTE" && isMaintenancier
+              ? "Maintenancier"
+              : fiche.responsableName ?? fiche.status}
+          </span>
         </div>
       </div>
 
-      {/* Bloc Machiniste */}
+      {/* Bloc Machiniste / Maintenancier */}
       <Section title="Intervention — Machiniste">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Nom du machiniste">
+          <Field label={isMaintenancier ? "Nom du maintenancier" : "Nom du machiniste"}>
             <span>{isMachinisteStep ? currentUserName : fiche.machinisteNom || "—"}</span>
           </Field>
           <Field label="Chef d'équipe destinataire">
             {isMachinisteStep ? (
-              <select
-                className="border p-1 w-full"
-                value={chefEquipeChoice}
-                onChange={(e) => setChefEquipeChoice(e.target.value)}
-              >
-                <option value="">— Choisir —</option>
-                {chefEquipeOptions.map((c) => (
-                  <option key={c.username} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              isMaintenancier ? (
+                // Choix unique et imposé, non modifiable : pas de select.
+                <span>{CHEF_EQUIPE_MAINTENANCE.name}</span>
+              ) : (
+                <select
+                  className="border p-1 w-full"
+                  value={chefEquipeChoice}
+                  onChange={(e) => setChefEquipeChoice(e.target.value)}
+                >
+                  <option value="">— Choisir —</option>
+                  {chefEquipeOptions.map((c) => (
+                    <option key={c.username} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              )
             ) : (
               <span>{fiche.superviseur || "—"}</span>
             )}

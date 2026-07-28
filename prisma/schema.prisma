@@ -1,7 +1,3 @@
-// Schéma de base de données — QHSE Maintenance
-// SQLite pour le développement local. Pour la prod, changer provider en "postgresql"
-// et DATABASE_URL dans .env (ex: Supabase, Neon, Railway).
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,120 +7,76 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ---------------------------------------------------------------------------
-// RÔLES — stockés en String (SQLite ne supporte pas les enums natifs Prisma).
-// Les valeurs valides sont définies et typées côté TypeScript dans lib/enums.ts :
-// ADMIN                     : seul à accéder à /admin, seul à imprimer/exporter
-// MACHINISTE                : renseigne son nom + coche les actions
-// CHEF_EQUIPE               : renseigne son nom + signe
-// RESPONSABLE_PRODUCTION    : signe
-// RESPONSABLE_MAINTENANCE   : signe
-// DIRECTEUR_TECHNIQUE       : signe
-//
-// FicheStatus (même principe) :
-// BROUILLON -> MACHINISTE -> CHEF_EQUIPE -> RESPONSABLE_PRODUCTION
-// -> RESPONSABLE_MAINTENANCE -> DIRECTEUR_TECHNIQUE -> ARCHIVE
-// ---------------------------------------------------------------------------
-
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  username     String   @unique
-  passwordHash String
-  role         String
-  createdAt    DateTime @default(now())
-
-  // Assignation d'un machiniste à un ou plusieurs FicheTemplate (relation
-  // many-to-many implicite — SQLite gère ça via une table de jointure
-  // générée automatiquement par Prisma, pas besoin de la déclarer).
-  // Liste vide = pas de restriction (utilisé pour les autres rôles :
-  // admin, chef d'équipe, responsables, directeur voient tout).
-  assignedTemplates FicheTemplate[]
-
-  signatures FicheSignature[]
+  id                String           @id @default(cuid())
+  name              String
+  username          String           @unique
+  passwordHash      String
+  role              String
+  createdAt         DateTime         @default(now())
+  signatures        FicheSignature[]
+  assignedTemplates FicheTemplate[]  @relation("FicheTemplateToUser")
 
   @@map("users")
 }
 
-// ---------------------------------------------------------------------------
-// MODÈLE DE FICHE (bibliothèque de modèles)
-// Le contenu figé de la fiche papier (EPI, consignes, actions, ressources)
-// est stocké en JSON. C'est ce qui permet d'avoir >5 types de fiches sans
-// dupliquer de code : chaque nouveau type = une nouvelle ligne ici.
-// ---------------------------------------------------------------------------
 model FicheTemplate {
-  id           String   @id @default(cuid())
-  ref          String   @unique // ex: "MTC.EN:011"
-  titre        String // ex: "FICHE D'ENTRETIEN PREVENTIF FARDELEUSE SIDEL"
-  version      String // ex: "02"
-  equipement   String // code équipement, ex: SDL-FARD
-  systeme      String // ex: SIDEL, ERTURK1, SIPA, BETAPAK1...
-  intervention String // ex: SDL-HEBD-FARD
-  epi          String // JSON sérialisé : liste des EPI requis (code, description, quantité)
-  consignesA   String // JSON sérialisé : consignes "à faire"
-  consignesNe  String // JSON sérialisé : consignes "à ne pas faire"
-  actions      String // JSON sérialisé : liste des actions du préventif (code, libellé) — à cocher
-  ressources   String // JSON sérialisé : ressources requises (rôle, nb, heures planifiées)
-  actif        Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
+  id            String          @id @default(cuid())
+  ref           String          @unique
+  titre         String
+  version       String
+  equipement    String
+  systeme       String
+  intervention  String
+  epi           String
+  consignesA    String
+  consignesNe   String
+  actions       String
+  ressources    String
+  actif         Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
   instances     FicheInstance[]
-  assignedUsers User[] // machinistes assignés à cette fiche
+  assignedUsers User[]          @relation("FicheTemplateToUser")
 
   @@map("fiche_templates")
 }
 
-// ---------------------------------------------------------------------------
-// INSTANCE DE FICHE (un OT réel, remplie et signée)
-// Le layout d'affichage/impression reprend exactement celui du template ;
-// seules les valeurs saisies (case cochées, noms, dates, signatures) varient.
-// ---------------------------------------------------------------------------
 model FicheInstance {
-  id         String        @id @default(cuid())
-  templateId String
-  template   FicheTemplate @relation(fields: [templateId], references: [id])
-
-  numeroOT      String   @unique
-  zone          String
-  centreCharge  String
-  superviseur   String
-  datePrevue    DateTime
-  dateFinPrevue DateTime
-
-  status String @default("BROUILLON")
-
-  // Étape Machiniste
+  id             String           @id @default(cuid())
+  templateId     String
+  numeroOT       String           @unique
+  zone           String
+  centreCharge   String
+  superviseur    String
+  datePrevue     DateTime
+  dateFinPrevue  DateTime
+  status         String           @default("BROUILLON")
   machinisteNom  String?
   dateEntretien  DateTime?
   actionsCochees String?
   heureDebut     String?
   heureFin       String?
   observation    String?
-
-  // Étape Chef d'équipe
-  chefEquipeNom String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  signatures FicheSignature[]
+  chefEquipeNom  String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  template       FicheTemplate    @relation(fields: [templateId], references: [id])
+  signatures     FicheSignature[]
 
   @@map("fiche_instances")
 }
 
-// Une signature = une validation d'étape par un rôle donné, horodatée.
-// C'est ce qui empêche de revenir modifier une étape déjà signée.
 model FicheSignature {
   id            String        @id @default(cuid())
   ficheId       String
-  fiche         FicheInstance @relation(fields: [ficheId], references: [id])
   userId        String
-  user          User          @relation(fields: [userId], references: [id])
   role          String
-  signatureData String? // image de la signature en base64
+  signatureData String?
   signedAt      DateTime      @default(now())
+  fiche         FicheInstance @relation(fields: [ficheId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
 
-  @@unique([ficheId, role]) // une seule signature par rôle et par fiche
+  @@unique([ficheId, role])
   @@map("fiche_signatures")
 }

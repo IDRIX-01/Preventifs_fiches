@@ -32,6 +32,18 @@ export const ROLE_FOR_STATUS: Record<FicheStatus, Role | null> = {
   ARCHIVE: null, // étape finale, personne ne "valide" depuis ARCHIVE
 };
 
+/**
+ * Le MAINTENANCIER n'a pas d'étape dédiée dans le workflow : il agit
+ * exactement comme un MACHINISTE à l'étape MACHINISTE (première étape),
+ * mais uniquement sur les fiches qui lui sont assignées (chiller /
+ * convoyeur — restriction vérifiée via `assignedTemplateIds` côté appelant,
+ * pas ici). Cette fonction ramène son rôle au rôle "canonique" du workflow
+ * pour toute la logique ci-dessous.
+ */
+function normalizeRoleForWorkflow(role: Role): Role {
+  return role === Role.MAINTENANCIER ? Role.MACHINISTE : role;
+}
+
 export function nextStatus(current: FicheStatus): FicheStatus | null {
   const idx = WORKFLOW_ORDER.indexOf(current);
   if (idx === -1 || idx === WORKFLOW_ORDER.length - 1) return null;
@@ -42,11 +54,12 @@ export function nextStatus(current: FicheStatus): FicheStatus | null {
  * Un utilisateur peut MODIFIER les champs de son étape uniquement si :
  *  - la fiche est actuellement à ce statut (son tour est venu)
  *  - son rôle correspond au rôle attendu pour ce statut
+ *    (le MAINTENANCIER compte comme MACHINISTE ici)
  *  - OU il est ADMIN (l'admin peut tout voir, mais ne "signe" pas à la place des autres)
  */
 export function canEditStep(userRole: Role, ficheStatus: FicheStatus): boolean {
   const expected = ROLE_FOR_STATUS[ficheStatus];
-  return expected !== null && userRole === expected;
+  return expected !== null && normalizeRoleForWorkflow(userRole) === expected;
 }
 
 /**
@@ -68,7 +81,8 @@ export function isAdmin(userRole: Role): boolean {
  * (y compris pour le rôle qui l'a signée) — on ne revient jamais en arrière.
  */
 export function isStepLocked(ficheStatus: FicheStatus, stepRole: Role): boolean {
-  const stepIndex = WORKFLOW_ORDER.findIndex((s) => ROLE_FOR_STATUS[s] === stepRole);
+  const normalizedStepRole = normalizeRoleForWorkflow(stepRole);
+  const stepIndex = WORKFLOW_ORDER.findIndex((s) => ROLE_FOR_STATUS[s] === normalizedStepRole);
   const currentIndex = WORKFLOW_ORDER.indexOf(ficheStatus);
   return stepIndex !== -1 && stepIndex < currentIndex;
 }

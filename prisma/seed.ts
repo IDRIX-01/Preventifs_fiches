@@ -6,9 +6,7 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  // ---------------------------------------------------------------------
-  // Contenu commun des fiches génériques (EPI, consignes, actions, ressources)
-  // ---------------------------------------------------------------------
+
   const epiCommun = [
     { code: "EPI-BOUCHON-OREI", description: "BOUCHON D'OREILLE", quantite: 1 },
     { code: "EPI-CAHCHE-NEZ", description: "MASQUE A POUSSIERE", quantite: 1 },
@@ -77,9 +75,7 @@ async function main() {
     { code: "RS-MACH", description: "MACHINISTE", nombre: 1, heuresPlan: 8.0 },
   ];
 
-  // ---------------------------------------------------------------------
-  // SIDEL — une fiche MTC par machine
-  // ---------------------------------------------------------------------
+
   type MachineSidel = {
     numero: string;
     machine: string;
@@ -666,11 +662,305 @@ async function main() {
     return result;
   }
 
-  // ---------------------------------------------------------------------
-  // Autres systèmes — une fiche générique chacun pour l'instant
-  // ---------------------------------------------------------------------
+
+  const epiStandardERT1 = [
+    { code: "EPI-BOUCHON-OREI", description: "BOUCHON D'OREILLE", quantite: 1 },
+    { code: "EPI-CAHCHE-NEZ", description: "MASQUE A POUSSIERE", quantite: 1 },
+    { code: "EPI-CASQUE", description: "CASQUE DE SECURITE", quantite: 1 },
+    { code: "EPI-CASQUE-ANTI", description: "CASQUE ANTI BRUIT", quantite: 1 },
+    { code: "EPI-CHAUSSURE", description: "CHAUSSURE DE SECURITE", quantite: 1 },
+    { code: "EPI-GANT-MECA", description: "GANT MECANIQUE", quantite: 1 },
+    { code: "EPI-LUNETTE-SEC", description: "LUNETTE DE SECURITE", quantite: 1 },
+    { code: "EPI-TENUE", description: "TENUE DE SECURITE", quantite: 1 },
+  ];
+
+  const ressourcesMecaERT1 = [
+    { code: "RS-MECA", description: "MECANIQUE", nombre: 1, heuresPlan: 1.0 },
+  ];
+
+  const machinesErturk1: MachineSidel[] = [
+    {
+      numero: "288-CHIL", 
+      machine: "SOUFFLEUSE-CHILLER",
+      code: "ERT1-SOUF-CHIL",
+      intervention: "ERT1-HBD-SOUF-SDL",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF CHILLER SOUFFLEUSE SIDEL ERTURK-1",
+      epiOverride: [],
+      consignesAOverride: [],
+      consignesNeOverride: [],
+      actionsOverride: [],
+      ressourcesOverride: [],
+    },
+    {
+      numero: "170",
+      machine: "ETIQUETEUSE",
+      code: "ERT1-ETIQ",
+      intervention: "ERT1-HBD-ETIQ",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF ETIQUETEUSE ERTURK",
+      epiOverride: epiStandardERT1,
+      consignesNeOverride: [
+        "Ne pas utiliser de jet d'eau sous pression pour nettoyer la machine",
+        "Ne pas vaporiser de l'eau chaude (température max. 45°C) sur les protections",
+        "Ne pas laver le groupe d'étiquetage ROLLQUATTRO",
+        "Ne pas utiliser de solvants ni de brosses abrasives",
+        "Ne pas fumer pendant l'intervention",
+        "Ne pas boire pendant l'intervention",
+        "Ne jamais intervenir sur la machine lors d'un \"test des électrovannes fixes ou mobiles\" : portes ouvertes, la machine est en énergie (eau, air, électricité, etc.)",
+        "Ne jamais utiliser d'acétone ou de produits dérivés",
+        "Ne jamais effectuer de travaux de soudure électrique sur la machine",
+        "Ne jamais remettre dans le circuit de production des articles tombés, manipulés ou éjectés par la machine",
+        "Ne placez pas vos mains près d'une partie mobile de la machine",
+        "N'effectuez aucun réglage lorsque la machine est en marche",
+      ],
+      ressourcesOverride: ressourcesMecaERT1,
+      actionsOverride: [
+        { code: "ACT-00138", libelle: "NETTOYER LE CHEMIN DE RETOUR DE COLLE" },
+        { code: "ACT-00139", libelle: "NETTOYER LE FILTRE DE RETOUR DE COLLE" },
+        { code: "ACT-00140", libelle: "VERIFIER LES SURFACE DE COUPE DE LA LAME" },
+        { code: "ACT-00141", libelle: "NETTOYER LES SURFACES DE COUPE DE LA LAME" },
+        { code: "ACT-00142", libelle: "VERIFIER SI LE REGLAGE DE COUPE DE LA LAME EST CORRECTE" },
+        { code: "ACT-00143", libelle: "VERIFIER LE TEFLON DE COUPE AVEC SOUFFLAGE" },
+        { code: "ACT-00144", libelle: "NETTOYER LE TEFLON DE COUPE AVEC SOUFFLAGE" },
+        { code: "ACT-00145", libelle: "CONTROLER LES POINTES DE COUPE DE LA LAME" },
+        { code: "ACT-00146", libelle: "NETTOYER LE PISTON DE COLLE" },
+        { code: "ACT-00147", libelle: "CONTROLER LE CAPTEUR SUR LE PISTON" },
+        { code: "ACT-00148", libelle: "VERIFIER L'ETAT DE L'ELECTROVANNE QUI ACTIONNE LE PISTON" },
+        { code: "ACT-00149", libelle: "VERIFIER LA PRESSION D'AIR DU REGULATEUR SUR LE HAUT DE LA CHAMBRE A COLLE" },
+        { code: "ACT-00152", libelle: "VERIFIER LES PARAMETRES DE GAIN DU SERVOMOTEUR" },
+        { code: "ACT-00154", libelle: "DEMONTER LE TAMBOUR" },
+        { code: "ACT-00155", libelle: "NETTOYER LE TAMBOUR A L'AIDE D'ESSENCE ET AIR COMPRIME" },
+        { code: "ACT-00156", libelle: "VERIFIER QUE LES PATINS DU TAMBOUR SOIENT POSITIONNES DANS LE BON SENS" },
+      ],
+    },
+    {
+      numero: "174",
+      machine: "FARDELEUSE",
+      code: "ERT1-FARD",
+      intervention: "ERT1-HBD-FARD",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF FARDELEUSE ERTURK",
+      epiOverride: epiStandardERT1,
+      consignesNeOverride: consignesNeCommun,
+      ressourcesOverride: ressourcesMecaERT1,
+      actionsOverride: [
+        { code: "ACT-00157", libelle: "VERIFIER L'ETAT DE LA CHAINE DU FOUR" },
+        { code: "ACT-00158", libelle: "VERIFIER L'ETAT DES PIGNONS DE LA CHAINE DU FOUR" },
+        { code: "ACT-00159", libelle: "VERIFIER L'ETAT DU VENTILATEUR FOUR" },
+        { code: "ACT-00160", libelle: "CONTROLER LES 3 MOTEURS EXTRACTEURS FOUR" },
+        { code: "ACT-00161", libelle: "CONTROLER LA LAME" },
+        { code: "ACT-00162", libelle: "NETTOYER LA LAME" },
+        { code: "ACT-00163", libelle: "VERIFIER L'ETAT DES ROULEAUX TENDEURS" },
+        { code: "ACT-00164", libelle: "VERIFIER LE BON FONCTIONNEMENT DES VERINS" },
+        { code: "ACT-00165", libelle: "VERIFIER L'ETAT DES POULIES DE ROULEAU FILM" },
+        { code: "ACT-00166", libelle: "VERIFIER L'ETAT DES COURROIES DE ROULEAU FILM" },
+        { code: "ACT-00167", libelle: "VERIFIER L'ETAT DE LA BARRE DE NAPPAGE" },
+        { code: "ACT-00168", libelle: "VERIFIER L'ETAT DU TAPIS" },
+        { code: "ACT-00169", libelle: "VERIFIER L'ETAT DES PIGNONS" },
+        { code: "ACT-00170", libelle: "VERIFIER L'ETAT DES ROULEAUX" },
+        { code: "ACT-00171", libelle: "VERIFIER L'ETAT DES CHAINES DE LA BARRE DE NAPPAGE" },
+        { code: "ACT-00172", libelle: "VERIFIER L'ETAT DU CAPTEUR BARRE DE NAPPAGE" },
+        { code: "ACT-00173", libelle: "VERIFIER L'ETAT DU RESSORT-PIGNON" },
+        { code: "ACT-00174", libelle: "VERIFIER L'ETAT DES SEPARATEURS" },
+        { code: "ACT-00175", libelle: "CONTROLER LE MOTEUR-REDUCTEUR" },
+        { code: "ACT-00176", libelle: "CONTROLER LES CONNEXIONS ET LES BROCHES ELECTRIQUES" },
+        { code: "ACT-00177", libelle: "NETTOYER LES FILTRES DES ARMOIRES ELECTRIQUES" },
+      ],
+    },
+    {
+      numero: "052",
+      machine: "FILMEUSE",
+      code: "ERT1-FILM",
+      intervention: "ERT1-HBD-FILM",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF FILMEUSE ERTURK",
+      epiOverride: epiStandardERT1,
+      consignesNeOverride: consignesNeCommun.slice(0, 11),
+      ressourcesOverride: ressourcesMecaERT1,
+      actionsOverride: [
+        { code: "ACT-00192", libelle: "VERIFIER LA STABILITE ET LE BON ALIGNEMENT DES CONVOYEURS" },
+        { code: "ACT-00193", libelle: "NETTOYER LA POUSSIERE ET LES DEBRIS SOUS LE CONVOYEUR" },
+        { code: "ACT-00194", libelle: "CONTROLER LES CAPTEURS MONTE-DESCENTE ASCENSEUR" },
+        { code: "ACT-00195", libelle: "VERIFIER L'ETAT DU VERIN" },
+        { code: "ACT-00196", libelle: "VERIFIER LA BONNE TENSION DE LA CHAINE" },
+        { code: "ACT-00197", libelle: "NETTOYER LA CHAINE" },
+        { code: "ACT-00198", libelle: "GRAISSER LA CHAINE" },
+        { code: "ACT-00199", libelle: "VERIFIER LES CAPTEURS DETECTEUR PALETTES SUR LE CONVOYEUR" },
+        { code: "ACT-00200", libelle: "VERIFIER L'ETAT DU SUPPORT PALETTE" },
+        { code: "ACT-00201", libelle: "VERIFIER LES CAPTEURS MONTE-DESCENTE DE L'ARBRE FILMEUR" },
+        { code: "ACT-00202", libelle: "VERIFIER LE ROULEAU POSEUR FILM" },
+        { code: "ACT-00203", libelle: "CONTROLER LA PINCE DE FILM" },
+        { code: "ACT-00204", libelle: "CONTROLER LE FIL CHAUFFANT DE FILM" },
+      ],
+    },
+    {
+      numero: "111",
+      machine: "PALETISEUR",
+      code: "ERT1-PALE",
+      intervention: "ERT1-HBD-PALE",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF PALETISEUR ERTURK",
+      epiOverride: epiStandardERT1,
+      consignesNeOverride: [
+        "Ne pas utiliser de jet d'eau sous pression pour nettoyer la machine",
+        "Ne pas vaporiser de l'eau chaude (température max. 45°C) sur les protections",
+        "Ne pas utiliser de solvants ni de brosses abrasives",
+        "Ne pas fumer pendant l'intervention",
+        "Ne pas boire pendant l'intervention",
+        "Ne jamais intervenir sur la machine lors d'un \"test des électrovannes fixes ou mobiles\" : portes ouvertes, la machine est en énergie (eau, air, électricité, etc.)",
+        "Ne jamais utiliser d'acétone ou de produits dérivés",
+        "Ne jamais effectuer de travaux de soudure électrique sur la machine",
+        "Ne jamais remettre dans le circuit de production des articles tombés, manipulés ou éjectés par la machine",
+        "Ne placez pas vos mains près d'une partie mobile de la machine",
+        "Ne pas mettre les mains près des surfaces chaudes du tunnel",
+      ],
+      ressourcesOverride: ressourcesMecaERT1,
+      actionsOverride: [
+        { code: "ACT-00178", libelle: "VERIFIER L'ETAT DU CAPTEUR INTERCALAIRE" },
+        { code: "ACT-00179", libelle: "VERIFIER L'ETAT DES VENTOUSES" },
+        { code: "ACT-00180", libelle: "VERIFIER L'ETAT DU CABLE PROFINET" },
+        { code: "ACT-00181", libelle: "VERIFIER LES CONNEXIONS PNEUMATIQUES" },
+        { code: "ACT-00182", libelle: "VERIFIER L'ETAT ET LA POSITION DES COMPACTEURS" },
+        { code: "ACT-00183", libelle: "CONTROLER LES VERINS PNEUMATIQUES DES COMPACTEURS" },
+        { code: "ACT-00185", libelle: "VERIFIER L'ETAT DES ROULEAUX CONVOYEUR" },
+        { code: "ACT-00186", libelle: "NETTOYER SOUS LE MAGASIN PALETTE" },
+        { code: "ACT-00187", libelle: "VERIFIER L'ETAT DU VERIN POUSSEUR" },
+        { code: "ACT-00188", libelle: "VERIFIER L'ETAT DE LA COURROIE POUSSEUR" },
+        { code: "ACT-00189", libelle: "VERIFIER L'ETAT DES GALETS GUIGADE POUSSEUR" },
+        { code: "ACT-00190", libelle: "CONTROLER LA PROPRETE DES CHEMINS DE GALETS" },
+        { code: "ACT-00191", libelle: "CONTROLER LES FUITES D'AIR DES DISTRIBUTEURS AUTOMATIQUES" },
+      ],
+    },
+    {
+      numero: "176",
+      machine: "REMPLISSEUSE",
+      code: "ERT1-REMP",
+      intervention: "ERT1-HBD-REMP",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF REMPLISSEUSE ERTURK",
+      epiOverride: epiStandardERT1,
+      consignesNeOverride: consignesNeCommun.slice(0, 11),
+      ressourcesOverride: ressourcesMecaERT1,
+      actionsOverride: [
+        { code: "ACT-00116", libelle: "VERIFIER L'ETAT DES CAPTEURS PRE-RINCEUSE ET POST-RINCEUSE" },
+        { code: "ACT-00117", libelle: "CONTROLER LES BUSES DE RINCAGES" },
+        { code: "ACT-00118", libelle: "VERIFIER L'ETAT DES GRIPPERS RINCEUSES ( PINCES , RESSORTS , GALETS )" },
+        { code: "ACT-00119", libelle: "VERIFIER L'ETAT DES GALETS DE GUIDAGE" },
+        { code: "ACT-00120", libelle: "GRAISSER LES GALETS DE GUIDAGE A PETITE DOSE" },
+        { code: "ACT-00121", libelle: "VERIFIER L'ETAT DES GRIPPERS ETOILE DE TRANSFERT" },
+        { code: "ACT-00122", libelle: "CONTROLER LE CAPTEUR DETECTEUR DE BOUTEILLES" },
+        { code: "ACT-00123", libelle: "VERIFIER LE SERRAGE DES PINCES" },
+        { code: "ACT-00124", libelle: "VERIFIER L'ETAT DES GRIPPERS REMPLISSEUSES" },
+        { code: "ACT-00125", libelle: "CONTROLER LE BON REMPLISSAGE DES BOUTEILLES" },
+        { code: "ACT-00126", libelle: "CONTROLER LA BONNE CONNEXION DES FLEXIBLES" },
+        { code: "ACT-00127", libelle: "CONTROLER LE FILTRE DES BUSES DE REMPLISSAGE" },
+        { code: "ACT-00128", libelle: "CONTROLER L'ETAT DES VANNES DE REMPLISSAGE" },
+        { code: "ACT-00129", libelle: "CONTROLER L'ETAT DES TETES BOUCHONNEUSES" },
+        { code: "ACT-00130", libelle: "VERIFIER LE NIVEAU DE LA CARTOUCHE DE GRAISSE AU DESSUS DE LA BOUCHONNEUSE" },
+        { code: "ACT-00131", libelle: "CONTROLER L'ETAT DES GUIDES METALLIQUES" },
+        { code: "ACT-00132", libelle: "NETTOYEZ LES TETES BOUCHONNEUSES SI NECESSAIRE" },
+        { code: "ACT-00133", libelle: "VERIFIER LE BON REGLAGE DE L'ENTREE CONVOYEUR" },
+        { code: "ACT-00134", libelle: "CONTROLER LE ROULEAU TENDEUR CONVOYEUR SORTIE" },
+        { code: "ACT-00135", libelle: "CONTROLER LES DIFFERENTS MOTEURS CONVOYEUR SORTIE" },
+        { code: "ACT-00136", libelle: "VERIFIER LA CONNEXION DES CABLES" },
+        { code: "ACT-00137", libelle: "CONTROLER LE BRUIT ET LA TEMPERATURE DU MOTEUR PRINCIPAL" },
+        { code: "ACT-00658", libelle: "VERIFIER LE NIVELAGE DES PINCES DE REMPLISSAGE AVEC L'ETOILE DE TRANSFERT BOUCHONNEUSE ( JEU DE 2MM )" },
+        { code: "ACT-00659", libelle: "VERIFIER LE SERRAGE DES VIS" },
+      ],
+    },
+    {
+      numero: "172",
+      machine: "SLEEVEUSE",
+      code: "ERT1-SLEE",
+      intervention: "ERT1-HBD-SLEE",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF SLEEVEUSE ERTURK",
+      epiOverride: epiStandardERT1,
+      consignesNeOverride: consignesNeCommun,
+      ressourcesOverride: ressourcesMecaERT1,
+      actionsOverride: [
+        { code: "ACT-00286", libelle: "NETTOYER TOUTE LA MACHINE" },
+        { code: "ACT-00538", libelle: "EXAMINER SOIGNEUSEMENT LES SYSTEMES MECANIQUES ET ELECTRIQUES" },
+        { code: "ACT-00539", libelle: "VERIFIER LES BARRES DE COMMANDE ELECTRIQUE STATIQUE" },
+        { code: "ACT-00540", libelle: "CONTROLER LA PRESSION DE FONCTIONNEMENT DE L'ENSEMBLE DE COUPE" },
+        { code: "ACT-00541", libelle: "VERIFIER LE MOTEUR ET SES CONNEXIONS ENTRANTES" },
+        { code: "ACT-00542", libelle: "VERIFIER L'ENSEMBLE DES CAPTEURS DE LA MACHINE" },
+        { code: "ACT-00543", libelle: "CONTROLER LES ROUES EN CAOUTCHOUC" },
+        { code: "ACT-00544", libelle: "NETTOYER AVEC UN CHIFFON PROPRE LES ROUES EN CAOUTCHOUC DES GROUPES 2 , 5 ET 6" },
+        { code: "ACT-00545", libelle: "VERIFIER LA LAME D'ASSEMBLAGE DE COUPE" },
+        { code: "ACT-00546", libelle: "VERIFIER LE SERRAGE DES PORTES LAMES" },
+        { code: "ACT-00547", libelle: "CONTROLER LE SERRAGE DES RESSORTS, BOULONS, ECROUS, SEGMENTS ET AXES DE FIXATION" },
+        { code: "ACT-00548", libelle: "CONTROLER LA TENSION DES COURROIES DE DISTRIBUTION" },
+        { code: "ACT-00549", libelle: "INSPECTER VISUELLEMENT ET MANUELLEMENT LES COURROIES ET LES TENDEURS" },
+        { code: "ACT-00550", libelle: "CONTROLER VISUELLEMENT TOUTE LA MACHINE" },
+      ],
+    },
+    {
+      numero: "288",
+      machine: "SOUFFLEUSE",
+      code: "ERT1-SOUF",
+      intervention: "ERT1-HBD-SOUF-SDL",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF SOUFFLEUSE SIDEL ERTURK-1",
+      epiOverride: epiStandardERT1,
+      consignesNeOverride: [
+        "Ne pas utiliser de jet d'eau sous pression pour nettoyer la machine",
+        "Ne pas vaporiser de l'eau chaude (température max. 45°C) sur les protections",
+        "Ne pas utiliser de solvants ni de brosses abrasives",
+        "Ne pas fumer pendant l'intervention",
+        "Ne pas boire pendant l'intervention",
+        "Ne jamais intervenir sur la machine lors d'un \"test des électrovannes fixes ou mobiles\" : portes ouvertes, la machine est en énergie (eau, air, électricité, etc.)",
+        "Ne jamais utiliser d'acétone ou de produits dérivés",
+        "Ne jamais remettre dans le circuit de production des articles tombés, manipulés ou éjectés par la machine",
+        "Ne placez pas vos mains près d'une partie mobile de la machine",
+        "N'effectuez aucun réglage lorsque la machine est en marche",
+      ],
+      ressourcesOverride: ressourcesMecaERT1,
+      actionsOverride: [
+        { code: "AM-B0005", libelle: "NETTOYER LES SURFACES DE CONTACT ENTRE LE MOULE ET LE NEZ DE TUYERE" },
+        { code: "AM-B0007", libelle: "NETTOYER LES CAMES DE TRANSFERT PREFORMES ET BOUTEILLES" },
+        { code: "AM-B0008", libelle: "NETTOYER LES FILTRES DES CIRCUITS HYDRAULIQUES" },
+        { code: "AM-B0009", libelle: "CONTROLER L'ABSENCE DE FUITE D'EAU SUR LE CIRCUIT HYDRAULIQUE" },
+        { code: "AM-B0010", libelle: "NETTOYER LES TIGES D'ELONGATION + CONTROLER LES VOIES D'AIMANTS" },
+        { code: "AM-B0011", libelle: "NETTOYER LA CAME DE DEVERROUILLAGE MOULE" },
+        { code: "AM-B0015", libelle: "NETTOYER LES DOIGTS DE VERROUILLAGE DES UNITES PORTE-MOULE" },
+        { code: "AM-B0021", libelle: "CONTROLER AUDITIF DES FUITES D'AIR DE L'ALIMENTATEUR" },
+        { code: "AM-B0022", libelle: "NETTOYER LES ELEMENTS EN CONTACT AVEC LA PREFORME DE L'ALIMENTATEUR (HORS BANDES TRANSPORTEUSES ET TREMIE)" },
+        { code: "AM-B0024", libelle: "CONTROLER L'ETAT DE LA COURROIE DE TRANSMISSION DES ROULEAUX ORIENTEURS" },
+        { code: "AM-B0025", libelle: "NETTOYER LA TREMIE ET LES SURFACES VITREE DE L'ALIMENTATEUR" },
+        { code: "AM-B0029", libelle: "NETTOYER LES CELLULES PHOTOELECTRIQUES DE L'ALIMENTATEUR" },
+        { code: "AM-B0030", libelle: "NETTOYER LA (OU LES) CAMERA(S) INFRAROUGE(S)" },
+        { code: "AM-B0034", libelle: "GRAISSER LES DOIGTS DE VERROUILLAGE DES UNITES PORTE-MOULE" },
+        { code: "AM-B0035", libelle: "GRAISSER LA CAME D'EJECTION PREFORMES ET DE LA CAME DE PROTECTION DE VETISSAGE A VIDE" },
+        { code: "AM-B0036", libelle: "GRAISSER LES MOULES ( NON KHOLOX UNIQUEMENT )" },
+        { code: "FORTHCOMING", libelle: "CONTROLER LE BAC DE RECUPERATION D'HUILE DU DEMELEUR QC" },
+        { code: "MP-B0180", libelle: "CONTROLER ET NETTOYER L'ETAT DE SURFACE DES VOIES D'AIMANTS" },
+        { code: "MP-B0295", libelle: "CONTROLER VISUELLEMENT LE FONCTIONNEMENT DU SYSTEME DE GRAISSAGE AUTOMATIQUE CENTRALISE" },
+      ],
+    },
+  ];
+
+
+  let erturk1ChillerTemplateId: string | undefined;
+
+  for (const m of machinesErturk1) {
+    const template = await prisma.ficheTemplate.upsert({
+      where: { ref: `MTC.EN:${m.numero}` },
+      update: {},
+      create: serializeTemplateFields({
+        ref: `MTC.EN:${m.numero}`,
+        titre: m.titreOverride ?? `FICHE D'ENTRETIEN PREVENTIF ${m.machine} ERTURK`,
+        version: "02",
+        equipement: m.code,
+        systeme: "ERTURK1",
+        intervention: m.intervention,
+        epi: m.epiOverride ?? epiCommun,
+        consignesA: m.consignesAOverride ?? consignesACommun,
+        consignesNe: m.consignesNeOverride ?? consignesNeCommun,
+        actions: m.actionsOverride ?? actionsCommunes,
+        ressources: m.ressourcesOverride ?? ressourcesCommunes,
+      }),
+    });
+    if (m.numero === "288-CHIL") {
+      erturk1ChillerTemplateId = template.id;
+    }
+  }
+
+
   const autresSystemes = [
-    { systeme: "ERTURK1", numero: "030" },
     { systeme: "ERTURK2", numero: "031" },
     { systeme: "SIPA", numero: "032" },
     { systeme: "05LITRES", numero: "033" },
@@ -702,13 +992,7 @@ async function main() {
     });
   }
 
-  // ---------------------------------------------------------------------
-  // Machinistes importés depuis l'export Coswin (ressource RS-MACH).
-  // Accès total : tous les machinistes voient toutes les fiches désormais
-  // (assignedTemplateIds vide = pas de restriction, voir dashboard).
-  // Inclut aussi le code 6350 (RS-INFO dans l'export, ajouté manuellement
-  // sur demande) et 2245 (auparavant chef d'équipe, repassé machiniste).
-  // ---------------------------------------------------------------------
+
   const employesRSMACH: { code: string; nom: string }[] = [
     { code: "6", nom: "OPOUE HONORAT" },
     { code: "20", nom: "FALLE SYLVANUS" },
@@ -856,12 +1140,7 @@ async function main() {
     { code: "6827", nom: "YOBOU ELYSEE" },
   ];
 
-  // Ces codes sont classés RS-MACH dans Coswin mais sont en réalité des
-  // chefs d'équipe dans l'organisation réelle — on les exclut des
-  // machinistes importés et on les ajoute en CHEF_EQUIPE à la place.
-  // NB : "2245" a été retiré de cette liste — le commentaire ci-dessus
-  // indique explicitement qu'il est "repassé machiniste", donc il ne doit
-  // pas être classé CHEF_EQUIPE.
+
   const codesChefsEquipe = new Set([
     "6",
     "20",
@@ -879,6 +1158,7 @@ async function main() {
     "1131",
     "1176",
     "2116",
+    "2245",
     "2844",
     "2985",
   ]);
@@ -890,7 +1170,7 @@ async function main() {
       name: e.nom,
       role: Role.MACHINISTE,
       password: "ksd22042001",
-      assignedTemplateIds: [] as string[], // accès à toutes les fiches
+      assignedTemplateIds: [] as string[], 
     }));
 
   const chefsEquipeImportes = employesRSMACH
@@ -900,22 +1180,103 @@ async function main() {
       name: e.nom,
       role: Role.CHEF_EQUIPE,
       password: "ksd22042001",
+      assignedTemplateIds: [] as string[], 
     }));
 
-  // ---------------------------------------------------------------------
-  // Comptes de démonstration (à changer en production !)
-  // ---------------------------------------------------------------------
+
+  const templatesMaintenanciers = [
+    sidelTemplateByMachine["SOUFFLEUSE-CHILLER"], 
+    sidelTemplateByMachine["CONVOYEUR"], 
+    erturk1ChillerTemplateId,
+  ].filter((id): id is string => Boolean(id));
+
+  const employesMaintenanciers: { code: string; nom: string }[] = [
+    { code: "44607", nom: "DEGBO RICHMOND" },
+    { code: "6292", nom: "SOUMAHORO ZAKARIA" },
+    { code: "6311", nom: "ACHY KPANGUI ANTOINE RODRIGUE" },
+    { code: "6425", nom: "TOUGMA ABDOUL KADER" },
+    { code: "6487", nom: "KOSSONOU KABRAN JACQUES-ELVIS" },
+
+    { code: "6601", nom: "OUATTARA KOUADIO IBRAHIM" },
+    { code: "6603", nom: "COULIBALY ABDOUL RAHIM" },
+    { code: "6604", nom: "KADJO ASSOHOUN ENOCH LOIS" },
+    { code: "6607", nom: "DIABATE SOUMAILA" },
+    { code: "6654", nom: "ADJOBI ANOUMAN ETIENNE" },
+    { code: "6710", nom: "ADDA MARC-OLIVIER" },
+    { code: "6789", nom: "MANIGA CASMIR" },
+    { code: "6791", nom: "N'GUESSAN N'GAMAN KAREME PROVIDENCE" },
+    { code: "6836", nom: "IDIBO DODO YANN EZECHIEL" },
+    { code: "6893", nom: "KASSI FIAN CHRISTIAN VALERE" },
+    { code: "6944", nom: "ALLOU MALAN WILFRID PHILIPPE" },
+    { code: "6974", nom: "YAPO KIMOU JEAN" },
+    { code: "6976", nom: "AMANGOUA MIESSAN AARON WILFRIED" },
+    { code: "7004", nom: "EKRA TANOH JEAN PIERRE ARISTIDE" },
+    { code: "7005", nom: "VANGAH AHOURE ANTOINE" },
+    { code: "7111", nom: "COULIBALY DJAKARIDJA THORGE" },
+    { code: "7160", nom: "LATTA NIAVA JEAN EMMANUEL" },
+    { code: "7235", nom: "N'GUESSAN KONAN BLANCHARD" },
+    { code: "7332", nom: "IRIE BI BOHAN LUCIEN WILLIAM" },
+
+    // Équipe Alasco (alasco.xlsx) — RS-MECA / RS-ELECTROMECA
+    { code: "1017", nom: "BAKAYOKO ALASSANE" },
+    { code: "3240", nom: "TEKI SOUMAHIN FREDERIC" },
+    { code: "3256", nom: "NOBA NOBA GUILLAUME" },
+    { code: "3846", nom: "N'DRI ERIC ARSENE" },
+    { code: "4192", nom: "AKA ASSOHOUN KEVIN PRUDENCE" },
+    { code: "4707", nom: "DIERO NOURDINE" },
+    { code: "4788", nom: "MOH AHOLI SOUNGALO TOURE" },
+    { code: "4789", nom: "AKA EHUI HARVEY" },
+    { code: "4790", nom: "AKA AKA SERGE DAVY" },
+    { code: "5213", nom: "COULIBALY MESSENE INZA" },
+    { code: "5385", nom: "KEITA ABIB" },
+    { code: "5418", nom: "DIAKITE MOUHAMED MOUNIRE" },
+    { code: "5576", nom: "N'GUESSAN DUVALS DONATIEN" },
+    { code: "7158", nom: "DJOAN N'GATTA GEORGES DORGELES" },
+    { code: "7170", nom: "BOGUI N'DRIN MARIE VALENCIA" },
+
+    // Équipe chef Pascal (chef-Pascal.xlsx) — RS-ELEC / RS-FROID / RS-PLOMB / RS-SOUD / RS-ELECTROTECH
+    { code: "1180", nom: "AMOISSI AKA PASCAL" },
+    { code: "2841", nom: "SILUE YEREDANHAN MARIAME" },
+    { code: "3792", nom: "TRA BI TIELO DONATHIEN" },
+    { code: "4225", nom: "KOUADIO BROU SAMUEL" },
+    { code: "4226", nom: "KOUAMELAN AMOUTCHI JOEL" },
+    { code: "4320", nom: "KOUADIO BOHOUSSOU AZIZ-DENEZ" },
+    { code: "4330", nom: "TOVI ALADJA ELIE" },
+    { code: "4791", nom: "EHONEGNE DJABIA GUY SERGE ALAIN" },
+    { code: "4963", nom: "ACHI N'TAHO DORINE" },
+    { code: "5117", nom: "BROU KADJO DENIS RAPHAEL" },
+    { code: "5131", nom: "KONAN KOFFI ARTHUR" },
+    { code: "5234", nom: "DIBI KOUADIO VENANCE" },
+    { code: "5368", nom: "SORO DJAKARIDJA LEFARA" },
+    { code: "5577", nom: "KOFFI N'GUESSAN DANIEL" },
+    { code: "5609", nom: "DOUTI YENBOTE" },
+    { code: "5869", nom: "BENIE BI TOUBOUI ABRAHAM" },
+    { code: "6787", nom: "KOBEHI MANNY JOEL" },
+    { code: "6815", nom: "DAGO GBALIE EVRARD SAMUEL" },
+  ];
+
+  const maintenanciersImportes = employesMaintenanciers.map((e) => ({
+    username: e.code,
+    name: e.nom,
+    role: Role.MAINTENANCIER,
+    password: "ksd22042001",
+    assignedTemplateIds: templatesMaintenanciers,
+  }));
+
+
   const users = [
     { username: "admin", name: "Administrateur", role: Role.ADMIN, password: "ksd22042001" },
 
-    // Machinistes — importés depuis Coswin, accès total à toutes les fiches
     ...machinistesImportes,
 
-    // Chefs d'équipe — importés depuis Coswin
     ...chefsEquipeImportes,
+
+    ...maintenanciersImportes,
 
     { username: "2", name: "OUSMANE BOUKARY", role: Role.RESPONSABLE_PRODUCTION, password: "ksd22042001" },
     { username: "76", name: "BOUSSOU HENOCK", role: Role.RESPONSABLE_MAINTENANCE, password: "ksd22042001" },
+
+    { username: "6488", name: "BIAGNE DIPLOH ANGE MONDESIR", role: Role.CHEF_EQUIPE, password: "ksd22042001" },
     { username: "directeur", name: "Directeur Technique", role: Role.DIRECTEUR_TECHNIQUE, password: "ksd22042001" },
   ];
 
@@ -926,11 +1287,7 @@ async function main() {
     await prisma.user.upsert({
       where: { username: u.username },
       update: {
-        // IMPORTANT : on remet aussi à jour name/role/passwordHash sur les
-        // comptes déjà existants, sinon un compte créé lors d'un run
-        // antérieur (par ex. classé MACHINISTE avant l'ajout de la logique
-        // CHEF_EQUIPE) reste bloqué sur son ancien rôle et/ou son ancien
-        // mot de passe, même après un nouveau `prisma db seed`.
+   
         name: u.name,
         role: u.role,
         passwordHash,
@@ -951,9 +1308,12 @@ async function main() {
   }
 
   console.log("Seed terminé.");
-  console.log(`Fiches créées : ${machinesSidel.length} (SIDEL) + ${autresSystemes.length} (autres systèmes)`);
+  console.log(
+    `Fiches créées : ${machinesSidel.length} (SIDEL) + ${machinesErturk1.length} (ERTURK1) + ${autresSystemes.length} (autres systèmes)`,
+  );
   console.log(`Machinistes importés (accès total) : ${machinistesImportes.length}`);
-  console.log(`Chefs d'équipe importés : ${chefsEquipeImportes.length}`);
+  console.log(`Chefs d'équipe importés (accès total) : ${chefsEquipeImportes.length}`);
+  console.log(`Maintenanciers importés (accès chiller + convoyeur) : ${maintenanciersImportes.length}`);
   console.log("Comptes créés (mot de passe: ksd22042001 à changer immédiatement) :");
   users.forEach((u) => console.log(`  - ${u.username} (${u.role}) — ${u.name}`));
 }

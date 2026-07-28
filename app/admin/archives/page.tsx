@@ -44,7 +44,9 @@ export default async function ArchivesPage({
     orderBy: { systeme: "asc" },
   });
 
-  const where: Prisma.FicheInstanceWhereInput = {};
+  // La recherche dans /admin/archives ne doit remonter que les fiches
+  // archivées, quels que soient les autres critères saisis (ligne, date).
+  const where: Prisma.FicheInstanceWhereInput = { status: "ARCHIVE" };
 
   if (systeme) where.template = { systeme };
   if (date) {
@@ -121,7 +123,7 @@ export default async function ArchivesPage({
 
       {hasSearched && results.length === 0 && (
         <div className="bg-white rounded shadow-sm p-6 text-center text-gray-400">
-          Aucune fiche ne correspond à ces critères.
+          Aucune fiche archivée ne correspond à ces critères.
         </div>
       )}
 
