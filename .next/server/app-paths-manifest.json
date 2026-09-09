@@ -1,12 +1,7 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/login/page": "app/login/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/admin/archives/page": "app/admin/archives/page.js",
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
-  "/admin/users/page": "app/admin/users/page.js",
   "/admin/templates/page": "app/admin/templates/page.js",
+  "/login/page": "app/login/page.js",
   "/fiches/[id]/page": "app/fiches/[id]/page.js",
-  "/api/fiches/[id]/route": "app/api/fiches/[id]/route.js",
-  "/api/users/route": "app/api/users/route.js"
+  "/dashboard/page": "app/dashboard/page.js"
 }

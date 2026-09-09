@@ -16,11 +16,7 @@ export default async function Dashboard() {
   const userId = (session.user as any).id as string;
   const userName = session.user?.name as string;
 
-  // Machiniste ET maintenancier : le maintenancier renseigne les fiches à
-  // la même étape qu'un machiniste (voir lib/workflow.ts), mais uniquement
-  // sur les fiches qui lui sont assignées (chiller/convoyeur). On récupère
-  // donc sa liste de fiches assignées de la même façon. Une liste vide
-  // = pas de restriction (cas des machinistes classiques).
+
   let assignedTemplateIds: Set<string> | null = null;
   if (role === Role.MACHINISTE || role === Role.MAINTENANCIER) {
     const user = await prisma.user.findUnique({
@@ -31,10 +27,7 @@ export default async function Dashboard() {
     assignedTemplateIds = ids.length > 0 ? new Set(ids) : null;
   }
 
-  // Une fiche archivée ne doit plus apparaître dans la liste par ligne,
-  // quel que soit le rôle — elle reste consultable uniquement via
-  // /admin/archives. On combine ce filtre avec la logique existante
-  // propre à chaque rôle via un AND.
+
   const roleFilter =
     role === Role.ADMIN
       ? {}
@@ -62,10 +55,7 @@ export default async function Dashboard() {
     orderBy: { createdAt: "desc" },
   });
 
-  // Pour un utilisateur avec accès restreint (maintenancier, ou un
-  // machiniste à qui on aurait assigné des fiches spécifiques), on ne
-  // garde que ses fiches assignées + celles qu'il a déjà traitées.
-  // Les autres rôles (assignedTemplateIds === null) ne sont pas filtrés ici.
+
   const fiches = assignedTemplateIds
     ? fichesBrutes.filter(
         (f) => assignedTemplateIds!.has(f.templateId) || f.machinisteNom === userName,

@@ -525,7 +525,7 @@ async function main() {
       intervention: "SDL-HBD-SLEE-HEUFT",
       titreOverride: "FICHE D'ENTRETIEN PREVENTIF HEUFT DE LA SLEEVEUSE SIDEL",
       epiOverride: [],
-      consignesAOverride: [],
+      consignesAOverride: [], 
       consignesNeOverride: [],
       actionsOverride: [
         { code: "ACT-00532", libelle: "S'ASSURER DE L'HYGIENE DE LA MACHINE (ABSENCE DE POUSSIERE, GRAISSE, HUILE ET AUTRE ELEMENT SALISSANT)" },
@@ -630,38 +630,27 @@ async function main() {
   const sidelTemplateByMachine: Record<string, string> = {};
 
   for (const m of machinesSidel) {
+    const data = serializeTemplateFields({
+      ref: `MTC.EN:${m.numero}`,
+      titre: m.titreOverride ?? `FICHE D'ENTRETIEN PREVENTIF ${m.machine} SIDEL`,
+      version: "02",
+      equipement: m.code,
+      systeme: "SIDEL",
+      intervention: m.intervention,
+      epi: m.epiOverride ?? epiCommun,
+      consignesA: m.consignesAOverride ?? consignesACommun,
+      consignesNe: m.consignesNeOverride ?? consignesNeCommun,
+      actions: m.actionsOverride ?? actionsCommunes,
+      ressources: m.ressourcesOverride ?? ressourcesCommunes,
+      actif: true,
+    });
     const template = await prisma.ficheTemplate.upsert({
       where: { ref: `MTC.EN:${m.numero}` },
-      update: {},
-      create: serializeTemplateFields({
-        ref: `MTC.EN:${m.numero}`,
-        titre: m.titreOverride ?? `FICHE D'ENTRETIEN PREVENTIF ${m.machine} SIDEL`,
-        version: "02",
-        equipement: m.code,
-        systeme: "SIDEL",
-        intervention: m.intervention,
-        epi: m.epiOverride ?? epiCommun,
-        consignesA: m.consignesAOverride ?? consignesACommun,
-        consignesNe: m.consignesNeOverride ?? consignesNeCommun,
-        actions: m.actionsOverride ?? actionsCommunes,
-        ressources: m.ressourcesOverride ?? ressourcesCommunes,
-      }),
+      update: data,
+      create: data,
     });
     sidelTemplateByMachine[m.machine] = template.id;
   }
-
-  function dedupByCode<T extends { code: string }>(items: T[]): T[] {
-    const seen = new Set<string>();
-    const result: T[] = [];
-    for (const item of items) {
-      if (!seen.has(item.code)) {
-        seen.add(item.code);
-        result.push(item);
-      }
-    }
-    return result;
-  }
-
 
   const epiStandardERT1 = [
     { code: "EPI-BOUCHON-OREI", description: "BOUCHON D'OREILLE", quantite: 1 },
@@ -680,7 +669,7 @@ async function main() {
 
   const machinesErturk1: MachineSidel[] = [
     {
-      numero: "288-CHIL", 
+      numero: "288-CHIL",
       machine: "SOUFFLEUSE-CHILLER",
       code: "ERT1-SOUF-CHIL",
       intervention: "ERT1-HBD-SOUF-SDL",
@@ -688,6 +677,9 @@ async function main() {
       epiOverride: [],
       consignesAOverride: [],
       consignesNeOverride: [],
+      // TODO: données actions/ressources non fournies dans la fiche source (contrairement aux
+      // chillers SDL-SOUF-CHIL / ERT2-SOUF1-CHIL / ERT2-SOUF2-CHIL qui ont bien 3-6 actions).
+      // À compléter avec la fiche réelle plutôt que de laisser un template vide.
       actionsOverride: [],
       ressourcesOverride: [],
     },
@@ -933,65 +925,1204 @@ async function main() {
     },
   ];
 
-
   let erturk1ChillerTemplateId: string | undefined;
 
   for (const m of machinesErturk1) {
+    const data = serializeTemplateFields({
+      ref: `MTC.EN:${m.numero}`,
+      titre: m.titreOverride ?? `FICHE D'ENTRETIEN PREVENTIF ${m.machine} ERTURK`,
+      version: "02",
+      equipement: m.code,
+      systeme: "ERTURK1",
+      intervention: m.intervention,
+      epi: m.epiOverride ?? epiCommun,
+      consignesA: m.consignesAOverride ?? consignesACommun,
+      consignesNe: m.consignesNeOverride ?? consignesNeCommun,
+      actions: m.actionsOverride ?? actionsCommunes,
+      ressources: m.ressourcesOverride ?? ressourcesCommunes,
+      actif: true,
+    });
     const template = await prisma.ficheTemplate.upsert({
       where: { ref: `MTC.EN:${m.numero}` },
-      update: {},
-      create: serializeTemplateFields({
-        ref: `MTC.EN:${m.numero}`,
-        titre: m.titreOverride ?? `FICHE D'ENTRETIEN PREVENTIF ${m.machine} ERTURK`,
-        version: "02",
-        equipement: m.code,
-        systeme: "ERTURK1",
-        intervention: m.intervention,
-        epi: m.epiOverride ?? epiCommun,
-        consignesA: m.consignesAOverride ?? consignesACommun,
-        consignesNe: m.consignesNeOverride ?? consignesNeCommun,
-        actions: m.actionsOverride ?? actionsCommunes,
-        ressources: m.ressourcesOverride ?? ressourcesCommunes,
-      }),
+      update: data,
+      create: data,
     });
     if (m.numero === "288-CHIL") {
       erturk1ChillerTemplateId = template.id;
     }
   }
 
-
-  const autresSystemes = [
-    { systeme: "ERTURK2", numero: "031" },
-    { systeme: "SIPA", numero: "032" },
-    { systeme: "05LITRES", numero: "033" },
-    { systeme: "17LITRES", numero: "034" },
-    { systeme: "BETAPAK1", numero: "035" },
-    { systeme: "BETAPAK2", numero: "036" },
-    { systeme: "BETAPAK3", numero: "037" },
-    { systeme: "BETAPAK4", numero: "038" },
-    { systeme: "BETAPAK5", numero: "039" },
+  let erturk2ChillerSMF1TemplateId: string | undefined;
+  let erturk2ChillerSMF2TemplateId: string | undefined;
+  const machinesErturk2: MachineSidel[] = [
+    {
+      numero: "209", // Ref: MTC.EN:209
+      machine: "ETIQUETEUSE",
+      code: "ERT2-ETIQ",
+      intervention: "ERT2-HBD-ETIQ",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF ETIQUETEUSE ERTURK 2",
+      epiOverride: epiStandardERT1,
+      consignesNeOverride: [
+        "Ne pas utiliser de jet d'eau sous pression pour nettoyer la machine",
+        "Ne pas vaporiser de l'eau chaude (température max. 45°C) sur les protections",
+        "Ne pas laver le groupe d'étiquetage ROLLQUATTRO",
+        "Ne pas utiliser de solvants ni de brosses abrasives",
+        "Ne pas fumer pendant l'intervention",
+        "Ne pas boire pendant l'intervention",
+        "Ne jamais entraîner la roue de soufflage en rotation en la tirant ou en la poussant",
+        "Ne jamais intervenir sur la machine lors d'un \"test des électrovannes fixes ou mobiles\" : portes ouvertes, la machine est en énergie (eau, air, électricité, etc.)",
+        "Ne jamais utiliser d'acétone ou de produits dérivés",
+        "Ne jamais effectuer de travaux de soudure électrique sur la machine",
+        "Ne jamais remettre dans le circuit de production des articles tombés, manipulés ou éjectés par la machine",
+        "Ne placez pas vos mains près d'une partie mobile de la machine",
+        "N'effectuez aucun réglage lorsque la machine est en marche",
+        "Ne pas mettre les mains près des surfaces chaudes du tunnel",
+      ],
+      ressourcesOverride: ressourcesMecaERT1,
+      actionsOverride: [
+        { code: "ACT-00138", libelle: "NETTOYER LE CHEMIN DE RETOUR DE COLLE" },
+        { code: "ACT-00139", libelle: "NETTOYER LE FILTRE DE RETOUR DE COLLE" },
+        { code: "ACT-00140", libelle: "VERIFIER LES SURFACE DE COUPE DE LA LAME" },
+        { code: "ACT-00141", libelle: "NETTOYER LES SURFACES DE COUPE DE LA LAME" },
+        { code: "ACT-00142", libelle: "VERIFIER SI LE REGLAGE DE COUPE DE LA LAME EST CORRECTE" },
+        { code: "ACT-00143", libelle: "VERIFIER LE TEFLON DE COUPE AVEC SOUFFLAGE" },
+        { code: "ACT-00144", libelle: "NETTOYER LE TEFLON DE COUPE AVEC SOUFFLAGE" },
+        { code: "ACT-00145", libelle: "CONTROLER LES POINTES DE COUPE DE LA LAME" },
+        { code: "ACT-00146", libelle: "NETTOYER LE PISTON DE COLLE" },
+        { code: "ACT-00147", libelle: "CONTROLER LE CAPTEUR SUR LE PISTON" },
+        { code: "ACT-00148", libelle: "VERIFIER L'ETAT DE L'ELECTROVANNE QUI ACTIONNE LE PISTON" },
+        { code: "ACT-00149", libelle: "VERIFIER LA PRESSION D'AIR DU REGULATEUR SUR LE HAUT DE LA CHAMBRE A COLLE" },
+        { code: "ACT-00152", libelle: "VERIFIER LES PARAMETRES DE GAIN DU SERVOMOTEUR" },
+        { code: "ACT-00154", libelle: "DEMONTER LE TAMBOUR" },
+        { code: "ACT-00155", libelle: "NETTOYER LE TAMBOUR A L'AIDE D'ESSENCE ET AIR COMPRIME" },
+        { code: "ACT-00156", libelle: "VERIFIER QUE LES PATINS DU TAMBOUR SOIENT POSITIONNES DANS LE BON SENS" },
+      ],
+    },
+    {
+      numero: "219", // Ref: MTC.EN:219
+      machine: "FARDELEUSE",
+      code: "ERT2-FARD",
+      intervention: "ERT2-HBD-FARD",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF FARDELEUSE ERTURK 2",
+      epiOverride: epiStandardERT1,
+      consignesNeOverride: consignesNeCommun,
+      ressourcesOverride: ressourcesMecaERT1,
+      actionsOverride: [
+        { code: "ACT-00157", libelle: "VERIFIER L'ETAT DE LA CHAINE DU FOUR" },
+        { code: "ACT-00158", libelle: "VERIFIER L'ETAT DES PIGNONS DE LA CHAINE DU FOUR" },
+        { code: "ACT-00159", libelle: "VERIFIER L'ETAT DU VENTILATEUR FOUR" },
+        { code: "ACT-00160", libelle: "CONTROLER LES 3 MOTEURS EXTRACTEURS FOUR" },
+        { code: "ACT-00161", libelle: "CONTROLER LA LAME" },
+        { code: "ACT-00162", libelle: "NETTOYER LA LAME" },
+        { code: "ACT-00163", libelle: "VERIFIER L'ETAT DES ROULEAUX TENDEURS" },
+        { code: "ACT-00164", libelle: "VERIFIER LE BON FONCTIONNEMENT DES VERINS" },
+        { code: "ACT-00165", libelle: "VERIFIER L'ETAT DES POULIES DE ROULEAU FILM" },
+        { code: "ACT-00166", libelle: "VERIFIER L'ETAT DES COURROIES DE ROULEAU FILM" },
+        { code: "ACT-00167", libelle: "VERIFIER L'ETAT DE LA BARRE DE NAPPAGE" },
+        { code: "ACT-00168", libelle: "VERIFIER L'ETAT DU TAPIS" },
+        { code: "ACT-00169", libelle: "VERIFIER L'ETAT DES PIGNONS" },
+        { code: "ACT-00170", libelle: "VERIFIER L'ETAT DES ROULEAUX" },
+        { code: "ACT-00171", libelle: "VERIFIER L'ETAT DES CHAINES DE LA BARRE DE NAPPAGE" },
+        { code: "ACT-00172", libelle: "VERIFIER L'ETAT DU CAPTEUR BARRE DE NAPPAGE" },
+        { code: "ACT-00173", libelle: "VERIFIER L'ETAT DU RESSORT-PIGNON" },
+        { code: "ACT-00174", libelle: "VERIFIER L'ETAT DES SEPARATEURS" },
+        { code: "ACT-00175", libelle: "CONTROLER LE MOTEUR-REDUCTEUR" },
+        { code: "ACT-00176", libelle: "CONTROLER LES CONNEXIONS ET LES BROCHES ELECTRIQUES" },
+        { code: "ACT-00177", libelle: "NETTOYER LES FILTRES DES ARMOIRES ELECTRIQUES" },
+      ],
+    },
+    {
+      numero: "208", // Ref: MTC.EN:208
+      machine: "FILMEUSE",
+      code: "ERT2-FILM",
+      intervention: "ERT2-HBD-FILM",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF FILMEUSE ERTURK 2",
+      epiOverride: epiStandardERT1,
+      consignesNeOverride: consignesNeCommun.slice(0, 11), // pas de ligne "tunnel"
+      ressourcesOverride: ressourcesMecaERT1,
+      actionsOverride: [
+        { code: "ACT-00185", libelle: "VERIFIER L'ETAT DES ROULEAUX CONVOYEUR" },
+        { code: "ACT-00192", libelle: "VERIFIER LA STABILITE ET LE BON ALIGNEMENT DES CONVOYEURS" },
+        { code: "ACT-00193", libelle: "NETTOYER LA POUSSIERE ET LES DEBRIS SOUS LE CONVOYEUR" },
+        { code: "ACT-00194", libelle: "CONTROLER LES CAPTEURS MONTE-DESCENTE ASCENSEUR" },
+        { code: "ACT-00199", libelle: "VERIFIER LES CAPTEURS DETECTEUR PALETTES SUR LE CONVOYEUR" },
+        { code: "ACT-00200", libelle: "VERIFIER L'ETAT DU SUPPORT PALETTE" },
+        { code: "ACT-00201", libelle: "VERIFIER LES CAPTEURS MONTE-DESCENTE DE L'ARBRE FILMEUR" },
+        { code: "ACT-00203", libelle: "CONTROLER LA PINCE DE FILM" },
+        { code: "ACT-00204", libelle: "CONTROLER LE FIL CHAUFFANT DE FILM" },
+        { code: "ACT-00344", libelle: "VERIFIER L'ETAT DES ROULEAUX TENDEUR DE FILM" },
+      ],
+    },
+    {
+      numero: "210", // Ref: MTC.EN:210
+      machine: "PALETISEUR",
+      code: "ERT2-PALE",
+      intervention: "ERT2-HBD-PALE",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF PALETISEUR ERTURK 2",
+      epiOverride: epiStandardERT1,
+      consignesNeOverride: consignesNeCommun.slice(0, 11), // pas de ligne "tunnel"
+      ressourcesOverride: ressourcesMecaERT1,
+      actionsOverride: dedupByCode([
+        { code: "ACT-00178", libelle: "VERIFIER L'ETAT DU CAPTEUR INTERCALAIRE" },
+        { code: "ACT-00179", libelle: "VERIFIER L'ETAT DES VENTOUSES" },
+        { code: "ACT-00180", libelle: "VERIFIER L'ETAT DU CABLE PROFINET" },
+        { code: "ACT-00181", libelle: "VERIFIER LES CONNEXIONS PNEUMATIQUES" },
+        { code: "ACT-00182", libelle: "VERIFIER L'ETAT ET LA POSITION DES COMPACTEURS" },
+        { code: "ACT-00183", libelle: "CONTROLER LES VERINS PNEUMATIQUES DES COMPACTEURS" },
+        { code: "ACT-00184", libelle: "CONTROLER L'ENSEMBLE DES CAPTEURS ET REFLECTEURS" },
+        { code: "ACT-00185", libelle: "VERIFIER L'ETAT DES ROULEAUX CONVOYEUR" },
+        { code: "ACT-00186", libelle: "NETTOYER SOUS LE MAGASIN PALETTE" },
+        { code: "ACT-00187", libelle: "VERIFIER L'ETAT DU VERIN POUSSEUR" },
+        { code: "ACT-00188", libelle: "VERIFIER L'ETAT DE LA COURROIE POUSSEUR" },
+        { code: "ACT-00189", libelle: "VERIFIER L'ETAT DES GALETS GUIGADE POUSSEUR" },
+        { code: "ACT-00190", libelle: "CONTROLER LA PROPRETE DES CHEMINS DE GALETS" },
+        { code: "ACT-00191", libelle: "CONTROLER LES FUITES D'AIR DES DISTRIBUTEURS AUTOMATIQUES" },
+        { code: "ACT-00193", libelle: "NETTOYER LA POUSSIERE ET LES DEBRIS SOUS LE CONVOYEUR" },
+        { code: "ACT-00195", libelle: "VERIFIER L'ETAT DU VERIN" },
+        { code: "ACT-00196", libelle: "VERIFIER LA BONNE TENSION DE LA CHAINE" },
+        { code: "ACT-00197", libelle: "NETTOYER LA CHAINE" },
+        { code: "ACT-00198", libelle: "GRAISSER LA CHAINE" },
+        { code: "ACT-00199", libelle: "VERIFIER LES CAPTEURS DETECTEUR PALETTES SUR LE CONVOYEUR" },
+      ]),
+    },
+    {
+      numero: "211", // Ref: MTC.EN:211
+      machine: "REMPLISSEUSE",
+      code: "ERT2-REMP",
+      intervention: "ERT2-HBD-REMP",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF REMPLISSEUSE ERTURK 2",
+      epiOverride: epiStandardERT1,
+      consignesNeOverride: consignesNeCommun.slice(0, 11), // pas de ligne "tunnel"
+      ressourcesOverride: ressourcesMecaERT1,
+      actionsOverride: [
+        { code: "ACT-00116", libelle: "VERIFIER L'ETAT DES CAPTEURS PRE-RINCEUSE ET POST-RINCEUSE" },
+        { code: "ACT-00117", libelle: "CONTROLER LES BUSES DE RINCAGES" },
+        { code: "ACT-00118", libelle: "VERIFIER L'ETAT DES GRIPPERS RINCEUSES ( PINCES , RESSORTS , GALETS )" },
+        { code: "ACT-00119", libelle: "VERIFIER L'ETAT DES GALETS DE GUIDAGE" },
+        { code: "ACT-00120", libelle: "GRAISSER LES GALETS DE GUIDAGE A PETITE DOSE" },
+        { code: "ACT-00121", libelle: "VERIFIER L'ETAT DES GRIPPERS ETOILE DE TRANSFERT" },
+        { code: "ACT-00122", libelle: "CONTROLER LE CAPTEUR DETECTEUR DE BOUTEILLES" },
+        { code: "ACT-00123", libelle: "VERIFIER LE SERRAGE DES PINCES" },
+        { code: "ACT-00124", libelle: "VERIFIER L'ETAT DES GRIPPERS REMPLISSEUSES" },
+        { code: "ACT-00125", libelle: "CONTROLER LE BON REMPLISSAGE DES BOUTEILLES" },
+        { code: "ACT-00126", libelle: "CONTROLER LA BONNE CONNEXION DES FLEXIBLES" },
+        { code: "ACT-00127", libelle: "CONTROLER LE FILTRE DES BUSES DE REMPLISSAGE" },
+        { code: "ACT-00128", libelle: "CONTROLER L'ETAT DES VANNES DE REMPLISSAGE" },
+        { code: "ACT-00129", libelle: "CONTROLER L'ETAT DES TETES BOUCHONNEUSES" },
+        { code: "ACT-00130", libelle: "VERIFIER LE NIVEAU DE LA CARTOUCHE DE GRAISSE AU DESSUS DE LA BOUCHONNEUSE" },
+        { code: "ACT-00131", libelle: "CONTROLER L'ETAT DES GUIDES METALLIQUES" },
+        { code: "ACT-00132", libelle: "NETTOYEZ LES TETES BOUCHONNEUSES SI NECESSAIRE" },
+        { code: "ACT-00133", libelle: "VERIFIER LE BON REGLAGE DE L'ENTREE CONVOYEUR" },
+        { code: "ACT-00134", libelle: "CONTROLER LE ROULEAU TENDEUR CONVOYEUR SORTIE" },
+        { code: "ACT-00135", libelle: "CONTROLER LES DIFFERENTS MOTEURS CONVOYEUR SORTIE" },
+        { code: "ACT-00136", libelle: "VERIFIER LA CONNEXION DES CABLES" },
+        { code: "ACT-00137", libelle: "CONTROLER LE BRUIT ET LA TEMPERATURE DU MOTEUR PRINCIPAL" },
+        { code: "ACT-00658", libelle: "VERIFIER LE NIVELAGE DES PINCES DE REMPLISSAGE AVEC L'ETOILE DE TRANSFERT BOUCHONNEUSE ( JEU DE 2MM )" },
+        { code: "ACT-00659", libelle: "VERIFIER LE SERRAGE DES VIS" },
+      ],
+    },
+    {
+      numero: "218", // Ref: MTC.EN:218
+      machine: "SLEEVEUSE",
+      code: "ERT2-SLEE",
+      intervention: "ERT2-HBD-SLEE",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF SLEEVEUSE ERTURK",
+      epiOverride: epiStandardERT1,
+      consignesNeOverride: consignesNeCommun,
+      ressourcesOverride: ressourcesMecaERT1,
+      actionsOverride: [
+        { code: "ACT-00023", libelle: "CONTROLER VISUELLEMENT LA MACHINE ( BRUIT ANORMAL , FUITE )" },
+        { code: "ACT-00025", libelle: "NETTOYER LA POUSSIERE DE LA MACHINE" },
+        { code: "ACT-00052", libelle: "NETTOYER LES CONVOYEURS MACHINE" },
+        { code: "ACT-00286", libelle: "NETTOYER TOUTE LA MACHINE" },
+        { code: "ACT-00498", libelle: "NETTOYER TOUTES LES PHOTOCELLULES" },
+        { code: "ACT-00533", libelle: "CONTROLER LES FUITE D'AIR / EAU / HUILE." },
+        { code: "ACT-00706", libelle: "GRAISSER LES ENGRENANGES" },
+        { code: "ACT-00707", libelle: "VERIFIER L'ARBRE DU MOTEUR DE BLOC DE COUPE" },
+        { code: "ACT-00708", libelle: "GRAISSER L'ARBRE DU MOTEUR DE BLOC DE COUPE" },
+        { code: "ACT-00709", libelle: "VERIFIER LE SERRAGE DE L'ORIENTATEUR DE FOND" },
+        { code: "ACT-00710", libelle: "VERIFIER LE SERRAGE DES SUPPORTS GLISSIERE" },
+        { code: "ACT-00711", libelle: "VERIFIER LA COURROIE A TAQUET" },
+        { code: "ACT-00712", libelle: "VERIFIER LES GALETS DE SORTIE" },
+        { code: "ACT-00713", libelle: "CONTROLER LES LAMES" },
+        { code: "ACT-00714", libelle: "NETTOYER LES LAMES AVEC L'ALCOOL" },
+        { code: "ACT-00715", libelle: "VERIFIER L'USURE" },
+        { code: "ACT-00716", libelle: "AJUSTER LA PRESSION / REMPLACER LES PIECES" },
+        { code: "ACT-00717", libelle: "VERIFIER L'ETAT ET LE SERRAGE DU DETECTEUR DE PROXIMITE" },
+        { code: "ACT-00718", libelle: "NETTOYER LE DETECTEUR DE PROXIMITE" },
+        { code: "ACT-00719", libelle: "VERIFIER LE CYLINDRE ET LE GALET DE L'ENTRAINEUR" },
+        { code: "ACT-00720", libelle: "NETTOYER LE CYLINDRE ET LE GALET DE L'ENTRAINEUR" },
+        { code: "ACT-00721", libelle: "VERIFIER LES CELLULES DATA SENSOR" },
+      ],
+    },
+    {
+      numero: "158", // Ref: MTC.EN:158
+      machine: "CHILLER SOUFFLEUSE SMF1",
+      code: "ERT2-SOUF1-CHIL",
+      intervention: "ERT2-HBD-SOUF-CHIL1",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF CHILLER SOUFFLEUSE SMF1 ERTURK2",
+      epiOverride: [],
+      consignesAOverride: [],
+      consignesNeOverride: [],
+      ressourcesOverride: [],
+      actionsOverride: [
+        { code: "ACT-00634", libelle: "CONTROLER LE NIVEAU D'EAU ( REMPLIR SI NIVEAU FAIBLE )" },
+        { code: "ACT-00635", libelle: "CONTROLER L'ETAT ET LE SERRAGE DES FLEXIBLES CONNECTES AU CHILLER" },
+        { code: "ACT-00636", libelle: "CONTROLER LA PROPRETE DES PANNEAUX FILTRANTS" },
+      ],
+    },
+    {
+      numero: "217", // Ref: MTC.EN:217
+      machine: "SOUFFLEUSE 1",
+      code: "ERT2-SOUF1",
+      intervention: "ERT2-HBD-SOUF1",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF SOUFFLEUSE 1 ERTURK2",
+      epiOverride: epiStandardERT1,
+      consignesNeOverride: [
+        "Ne pas utiliser de jet d'eau sous pression pour nettoyer la machine",
+        "Ne pas vaporiser de l'eau chaude (température max. 45°C) sur les protections",
+        "Ne pas utiliser de solvants ni de brosses abrasives",
+        "Ne pas fumer pendant l'intervention",
+        "Ne pas boire pendant l'intervention",
+        "Ne jamais entraîner la roue de soufflage en rotation en la tirant ou en la poussant",
+        "Ne jamais intervenir sur la machine lors d'un \"test des électrovannes fixes ou mobiles\" : portes ouvertes, la machine est en énergie (eau, air, électricité, etc.)",
+        "Ne jamais utiliser d'acétone ou de produits dérivés",
+        "Ne jamais effectuer de travaux de soudure électrique sur la machine",
+        "Ne jamais remettre dans le circuit de production des articles tombés, manipulés ou éjectés par la machine",
+        "Ne placez pas vos mains près d'une partie mobile de la machine",
+        "N'effectuez aucun réglage lorsque la machine est en marche",
+      ],
+      ressourcesOverride: ressourcesMecaERT1,
+      actionsOverride: [
+        { code: "ACT-00088", libelle: "VERIFIER LES CONNEXIONS PNEUMATIQUES , ELECTRIQUES AINSI QUE LES FLEXIBLES A EAU" },
+        { code: "ACT-00089", libelle: "VERIFIER L'ETAT DU PANEL ( BOUTONS , ECRAN )" },
+        { code: "ACT-00090", libelle: "CONTROLER LES BOUTONS D'URGENCE ET LES CAPTEURS ANTI-BOURRAGE" },
+        { code: "ACT-00091", libelle: "CONTROLER LE FILTRE DES VENTILATEURS DES ARMOIRES ELECTRIQUES" },
+        { code: "ACT-00092", libelle: "GRAISSER TOUS LES POINTS GRAISSEUR MANUEL" },
+        { code: "ACT-00093", libelle: "VERIFIER LE BON POSITIONNEMENT DE TOUS LES CAPTEURS ( MOULE , FOUR , MANIPULATEUR )" },
+        { code: "ACT-00094", libelle: "CONTROLER LE NIVEAU DE GRAISSE DANS LE RESERVOIR GRAISSEUR AUTOMATIQUE" },
+        { code: "ACT-00095", libelle: "VERIFIER QU'IL N'Y A PAS DE PREFORMES COINCES DANS LE MOULE" },
+        { code: "ACT-00096", libelle: "VERIFIER LE SERRAGE ET L'ALIGNEMENT DU BLOC DE MOULE" },
+        { code: "ACT-00097", libelle: "VERIFIER L'ETAT DES FLEXIBLES CONNECTES AU MOULE" },
+        { code: "ACT-00098", libelle: "VERIFIER L'ALIGNEMENT DES NOZZLE AVEC LE MOULE" },
+        { code: "ACT-00099", libelle: "NETTOYER AVEC DE L'ALCOOL LE MOULE ET LE FOND DE MOULE" },
+        { code: "ACT-00100", libelle: "VERIFIER LE BON FONCTIONNEMENT D'EXTRACTEUR DE CHALEUR" },
+        { code: "ACT-00101", libelle: "VERIFIER S'IL N'Y A PAS DE PREFORMES DANS LE FOUR" },
+        { code: "ACT-00102", libelle: "VERIFIER L'ETAT DES LAMPES THERMIQUES" },
+        { code: "ACT-00103", libelle: "VERIFIER L'ETAT DES PINCES ET LEURS RESSORTS" },
+        { code: "ACT-00104", libelle: "NETTOYER LES PINCES ET TOURNETTES AVEC DE L'ALCOOL" },
+        { code: "ACT-00105", libelle: "VERIFIER L'ETAT DES GALETS DE PINCES" },
+        { code: "ACT-00106", libelle: "VERIFIER LE SERRAGE DE L'ACCOUPLEMENT" },
+        { code: "ACT-00107", libelle: "CONTROLER LES COURROIES DE MANIPULATEURS" },
+        { code: "ACT-00108", libelle: "VERIFIER L'ETAT DES GALETS DES TOURNETTES" },
+        { code: "ACT-00109", libelle: "CONTROLER LE TAPIS ELEVATEUR PREFORMES ( AGRAFES , TASSEAUX )" },
+        { code: "ACT-00110", libelle: "CONTROLER LE TAPIS BLOQUEUR PREFORMES" },
+        { code: "ACT-00111", libelle: "CONTROLER LES TIGES D'ETIRAGES" },
+        { code: "ACT-00112", libelle: "NETTOYER LES TIGES D'ETIRAGES" },
+        { code: "ACT-00113", libelle: "CONTROLER LE PIGNON ET LA CREMAILLERE" },
+        { code: "ACT-00114", libelle: "GRAISSER LE PIGNON ET LA CREMAILLERE" },
+        { code: "ACT-00115", libelle: "GRAISSER EN PETITE QUANTITE LES TIGES D'ETIRAGES" },
+      ],
+    },
+    {
+      numero: "2-158", // Ref: MTC.EN:158
+      machine: "CHILLER SOUFFLEUSE SMF2",
+      code: "ERT2-SOUF2-CHIL",
+      intervention: "ERT2-HBD-SOUF-CHIL2",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF CHILLER SOUFFLEUSE SMF2 ERTURK2",
+      epiOverride: [],
+      consignesAOverride: [],
+      consignesNeOverride: [],
+      ressourcesOverride: [],
+      actionsOverride: [
+        { code: "ACT-00634", libelle: "CONTROLER LE NIVEAU D'EAU ( REMPLIR SI NIVEAU FAIBLE )" },
+        { code: "ACT-00635", libelle: "CONTROLER L'ETAT ET LE SERRAGE DES FLEXIBLES CONNECTES AU CHILLER" },
+        { code: "ACT-00636", libelle: "CONTROLER LA PROPRETE DES PANNEAUX FILTRANTS" },
+      ],
+    },
+    {
+      numero: "2-217", // Ref: MTC.EN:217
+      machine: "SOUFFLEUSE 2",
+      code: "ERT2-SOUF2",
+      intervention: "ERT2-HBD-SOUF2",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF SOUFFLEUSE 2 ERTURK2",
+      epiOverride: epiStandardERT1,
+      consignesNeOverride: [
+        "Ne pas utiliser de jet d'eau sous pression pour nettoyer la machine",
+        "Ne pas vaporiser de l'eau chaude (température max. 45°C) sur les protections",
+        "Ne pas utiliser de solvants ni de brosses abrasives",
+        "Ne pas fumer pendant l'intervention",
+        "Ne pas boire pendant l'intervention",
+        "Ne jamais entraîner la roue de soufflage en rotation en la tirant ou en la poussant",
+        "Ne jamais intervenir sur la machine lors d'un \"test des électrovannes fixes ou mobiles\" : portes ouvertes, la machine est en énergie (eau, air, électricité, etc.)",
+        "Ne jamais utiliser d'acétone ou de produits dérivés",
+        "Ne jamais effectuer de travaux de soudure électrique sur la machine",
+        "Ne jamais remettre dans le circuit de production des articles tombés, manipulés ou éjectés par la machine",
+        "Ne placez pas vos mains près d'une partie mobile de la machine",
+        "N'effectuez aucun réglage lorsque la machine est en marche",
+      ],
+      ressourcesOverride: ressourcesMecaERT1,
+      actionsOverride: [
+        { code: "ACT-00088", libelle: "VERIFIER LES CONNEXIONS PNEUMATIQUES , ELECTRIQUES AINSI QUE LES FLEXIBLES A EAU" },
+        { code: "ACT-00089", libelle: "VERIFIER L'ETAT DU PANEL ( BOUTONS , ECRAN )" },
+        { code: "ACT-00090", libelle: "CONTROLER LES BOUTONS D'URGENCE ET LES CAPTEURS ANTI-BOURRAGE" },
+        { code: "ACT-00091", libelle: "CONTROLER LE FILTRE DES VENTILATEURS DES ARMOIRES ELECTRIQUES" },
+        { code: "ACT-00092", libelle: "GRAISSER TOUS LES POINTS GRAISSEUR MANUEL" },
+        { code: "ACT-00093", libelle: "VERIFIER LE BON POSITIONNEMENT DE TOUS LES CAPTEURS ( MOULE , FOUR , MANIPULATEUR )" },
+        { code: "ACT-00094", libelle: "CONTROLER LE NIVEAU DE GRAISSE DANS LE RESERVOIR GRAISSEUR AUTOMATIQUE" },
+        { code: "ACT-00095", libelle: "VERIFIER QU'IL N'Y A PAS DE PREFORMES COINCES DANS LE MOULE" },
+        { code: "ACT-00096", libelle: "VERIFIER LE SERRAGE ET L'ALIGNEMENT DU BLOC DE MOULE" },
+        { code: "ACT-00097", libelle: "VERIFIER L'ETAT DES FLEXIBLES CONNECTES AU MOULE" },
+        { code: "ACT-00098", libelle: "VERIFIER L'ALIGNEMENT DES NOZZLE AVEC LE MOULE" },
+        { code: "ACT-00099", libelle: "NETTOYER AVEC DE L'ALCOOL LE MOULE ET LE FOND DE MOULE" },
+        { code: "ACT-00100", libelle: "VERIFIER LE BON FONCTIONNEMENT D'EXTRACTEUR DE CHALEUR" },
+        { code: "ACT-00101", libelle: "VERIFIER S'IL N'Y A PAS DE PREFORMES DANS LE FOUR" },
+        { code: "ACT-00102", libelle: "VERIFIER L'ETAT DES LAMPES THERMIQUES" },
+        { code: "ACT-00103", libelle: "VERIFIER L'ETAT DES PINCES ET LEURS RESSORTS" },
+        { code: "ACT-00104", libelle: "NETTOYER LES PINCES ET TOURNETTES AVEC DE L'ALCOOL" },
+        { code: "ACT-00105", libelle: "VERIFIER L'ETAT DES GALETS DE PINCES" },
+        { code: "ACT-00106", libelle: "VERIFIER LE SERRAGE DE L'ACCOUPLEMENT" },
+        { code: "ACT-00107", libelle: "CONTROLER LES COURROIES DE MANIPULATEURS" },
+        { code: "ACT-00108", libelle: "VERIFIER L'ETAT DES GALETS DES TOURNETTES" },
+        { code: "ACT-00109", libelle: "CONTROLER LE TAPIS ELEVATEUR PREFORMES ( AGRAFES , TASSEAUX )" },
+        { code: "ACT-00110", libelle: "CONTROLER LE TAPIS BLOQUEUR PREFORMES" },
+        { code: "ACT-00111", libelle: "CONTROLER LES TIGES D'ETIRAGES" },
+        { code: "ACT-00112", libelle: "NETTOYER LES TIGES D'ETIRAGES" },
+        { code: "ACT-00113", libelle: "CONTROLER LE PIGNON ET LA CREMAILLERE" },
+        { code: "ACT-00114", libelle: "GRAISSER LE PIGNON ET LA CREMAILLERE" },
+        { code: "ACT-00115", libelle: "GRAISSER EN PETITE QUANTITE LES TIGES D'ETIRAGES" },
+      ],
+    },
   ];
 
-  for (const s of autresSystemes) {
-    await prisma.ficheTemplate.upsert({
-      where: { ref: `MTC.EN:${s.numero}` },
-      update: {},
-      create: serializeTemplateFields({
-        ref: `MTC.EN:${s.numero}`,
-        titre: `FICHE D'ENTRETIEN PREVENTIF FARDELEUSE ${s.systeme}`,
-        version: "02",
-        equipement: `${s.systeme}-FARD`,
-        systeme: s.systeme,
-        intervention: `${s.systeme}-HEBD-FARD`,
-        epi: epiCommun,
-        consignesA: consignesACommun,
-        consignesNe: consignesNeCommun,
-        actions: actionsCommunes,
-        ressources: ressourcesCommunes,
-      }),
+  for (const m of machinesErturk2) {
+    const data = serializeTemplateFields({
+      ref: `MTC.EN:${m.numero}`,
+      titre: m.titreOverride ?? `FICHE D'ENTRETIEN PREVENTIF ${m.machine} ERTURK`,
+      version: "02",
+      equipement: m.code,
+      systeme: "ERTURK2",
+      intervention: m.intervention,
+      epi: m.epiOverride ?? epiCommun,
+      consignesA: m.consignesAOverride ?? consignesACommun,
+      consignesNe: m.consignesNeOverride ?? consignesNeCommun,
+      actions: m.actionsOverride ?? actionsCommunes,
+      ressources: m.ressourcesOverride ?? ressourcesCommunes,
+      actif: true,
     });
+    const template = await prisma.ficheTemplate.upsert({
+      where: { ref: `MTC.EN:${m.numero}` },
+      update: data,
+      create: data,
+    });
+
+    if (m.machine === "CHILLER SOUFFLEUSE SMF1") {
+      erturk2ChillerSMF1TemplateId = template.id;
+    }
+
+    if (m.machine === "CHILLER SOUFFLEUSE SMF2") {
+      erturk2ChillerSMF2TemplateId = template.id;
+    }
   }
 
+
+  const actionsBetaPakCommunes = [
+    { code: "ACT-00314", libelle: "VERIFIER LE MANDRIN (PRESSION D'AIR, AXE, CLAVETAGE ...)" },
+    { code: "ACT-00315", libelle: "VERIFIER S'IL Y A DES USURES SUR LES COLONNES DE GUIDAGE" },
+    { code: "ACT-00316", libelle: "VERIFIER S'IL Y A DES USURES SUR LES BAGUES D'ARTICULATIONS" },
+    { code: "ACT-00317", libelle: "VERIFIER LES FUITES D'AIR" },
+    { code: "ACT-00318", libelle: "VERIFIER L'ETAT DES MOULES DE LA MACHINE DE COUPE, USURE, ETC" },
+    { code: "ACT-00319", libelle: "VERIFIER LA TENSION DE TAPIS CONVOYEUR, SERRER EN CAS DE BESOIN" },
+    { code: "ACT-00320", libelle: "NETTOYER L'ANCIENNE GRAISSE ET HUILE" },
+    { code: "ACT-00321", libelle: "GRAISSER TOUT LES POINTS DE LA MACHINE" },
+    { code: "ACT-00322", libelle: "LUBRIFIER TOUT LES POINTS DE LA MACHINE" },
+    { code: "ACT-00323", libelle: "NETTOYER TOUT LES COUVERCLES A L'EAU + OMO" },
+    { code: "ACT-00324", libelle: "NETTOYER LES FLEXIBLES ET LES BUSES DE REMPLISSAGE A L'EAU+OMO" },
+    { code: "ACT-00325", libelle: "VERIFIER LES SUPPORTS DE PLAQUE DE CHAUFFE ET SOUDURE" },
+    { code: "ACT-00326", libelle: "VERIFIER L'ETAT DE ROULEMENTS DE TOUS LES ROULEAUX" },
+    { code: "ACT-00327", libelle: "VERIFIER L'ETAT ET LA BONNE FIXATION DE TOUS LES CAPTEURS ET PHOTOCELLULES" },
+    { code: "ACT-00328", libelle: "VERIFIER L'ETAT DE LA PLAQUE DE SOUDURE (DEBRIS, USURE, ETC.)" },
+    { code: "ACT-00329", libelle: "VERIFIER L'ETAT DES TEFLONS DES PLAQUES DE CHAUFFAGE" },
+    { code: "ACT-00330", libelle: "VERIFIER LE BON FONCTIONNEMENT DE LA MACHINE A VIDE" },
+    { code: "ACT-00331", libelle: "VERIFIER LE FORMING : USURE, ETANCHEITE, ARTICULATIONS" },
+    { code: "ACT-00332", libelle: "VERIFIER LE SERVO DE TIRAGE FILM : FIXATION,CONNEXIONS,JEU" },
+    { code: "ACT-00333", libelle: "VERIFIER LE BON FONCTIONNEMENT DE CIRCUIT DE REFROIDISSEMENT" },
+    { code: "ACT-00334", libelle: "VERIFIER L'ETAT ET LE SERRAGE DES BARS DE MOUVEMENT BLOC DE COUPE" },
+    { code: "ACT-00335", libelle: "VERIFIER LE SERRAGE DE TOUTES LES CONNEXIONS ELECTRIQUES" },
+    { code: "ACT-00336", libelle: "ARRANGER LES AMOIRES ELECTRIQUES" },
+    { code: "ACT-00337", libelle: "VERIFIER SYSTEME DE DEROULEUR BOBINE" },
+    { code: "ACT-00338", libelle: "VERIFIER L'ETAT DE CONVOYEUR DE DECHETS (TENSION DE TAPIS, ROULEAUX)" },
+    { code: "ACT-00339", libelle: "CONTROLER LES BUSES DE REMPLISSAGE" },
+    { code: "ACT-00340", libelle: "NETTOYER LA SONDE DE TEMPERATURE BLOC DE SOUDAGE" },
+    { code: "ACT-00341", libelle: "NETTOYER LA MACHINE DE TOUTE SALETE" },
+  ];
+
+  const machinesBetaPak: MachineSidel[] = [
+    {
+      numero: "086-2", // Ref source: MTC.EN:086 — Equipement BTP0002
+      machine: "BETA PACK 2",
+      code: "BTP0002",
+      intervention: "BTP-HBD-BETA2",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF BETA PACK 2",
+      epiOverride: [],
+      consignesAOverride: consignesACommun,
+      consignesNeOverride: consignesNeCommun.slice(0, 11), // pas de ligne "tunnel"
+      actionsOverride: actionsBetaPakCommunes,
+    },
+    {
+      numero: "086-3", // Ref source: MTC.EN:086 — Equipement BTP0003
+      machine: "BETA PACK 3",
+      code: "BTP0003",
+      intervention: "BTP-HBD-BETA3",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF BETA PACK 3",
+      epiOverride: [],
+      consignesAOverride: consignesACommun,
+      consignesNeOverride: consignesNeCommun.slice(0, 11),
+      actionsOverride: [
+        ...actionsBetaPakCommunes,
+        { code: "ACT-00343", libelle: "VÉRIFIER L'ETAT DE LA BARRE DE SON" },
+      ],
+    },
+    {
+      numero: "086-4", // Ref source: MTC.EN:086 — Equipement BTP0004
+      machine: "BETA PACK 4",
+      code: "BTP0004",
+      intervention: "BTP-HBD-BETA4",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF BETA PACK 4",
+      epiOverride: [],
+      consignesAOverride: consignesACommun,
+      consignesNeOverride: consignesNeCommun.slice(0, 11),
+      actionsOverride: actionsBetaPakCommunes,
+    },
+    {
+      numero: "086-5", // Ref source: MTC.EN:086 — Equipement BTP0005
+      machine: "BETA PACK 5",
+      code: "BTP0005",
+      intervention: "BTP-HBD-BETA5",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF BETA PACK 5",
+      epiOverride: [],
+      consignesAOverride: consignesACommun,
+      consignesNeOverride: consignesNeCommun.slice(0, 11),
+      actionsOverride: actionsBetaPakCommunes,
+    },
+    {
+      numero: "086-6", // Ref source: MTC.EN:086 — Equipement BTP0006
+      machine: "BETA PACK 6",
+      code: "BTP0006",
+      intervention: "BTP-HBD-BETA6",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF BETA PACK 6",
+      epiOverride: [],
+      consignesAOverride: consignesACommun,
+      consignesNeOverride: consignesNeCommun.slice(0, 11),
+      actionsOverride: actionsBetaPakCommunes,
+    },
+  ];
+
+  for (const m of machinesBetaPak) {
+    const data = serializeTemplateFields({
+      ref: `MTC.EN:${m.numero}`,
+      titre: m.titreOverride ?? `FICHE D'ENTRETIEN PREVENTIF ${m.machine}`,
+      version: "02",
+      equipement: m.code,
+      systeme: "BTP",
+      intervention: m.intervention,
+      epi: m.epiOverride ?? epiCommun,
+      consignesA: m.consignesAOverride ?? consignesACommun,
+      consignesNe: m.consignesNeOverride ?? consignesNeCommun,
+      actions: m.actionsOverride ?? actionsCommunes,
+      ressources: m.ressourcesOverride ?? ressourcesCommunes,
+      actif: true,
+    });
+    await prisma.ficheTemplate.upsert({
+      where: { ref: `MTC.EN:${m.numero}` },
+      update: data,
+      create: data,
+    });
+  }
+  const consignesNe17LStandard = [
+    "Ne pas utiliser de jet d'eau sous pression pour nettoyer la machine",
+    "Ne pas vaporiser de l'eau chaude (température max. 45°C) sur les protections",
+    "Ne pas utiliser de solvants ni de brosses abrasives",
+    "Ne pas fumer pendant l'intervention",
+    "Ne pas boire pendant l'intervention",
+    "Ne jamais entraîner la roue de soufflage en rotation en la tirant ou en la poussant",
+    "Ne jamais intervenir sur la machine lors d'un \"test des électrovannes fixes ou mobiles\" : portes ouvertes, la machine est en énergie (eau, air, électricité, etc.)",
+    "Ne jamais utiliser d'acétone ou de produits dérivés",
+    "Ne jamais effectuer de travaux de soudure électrique sur la machine",
+    "Ne jamais remettre dans le circuit de production des articles tombés, manipulés ou éjectés par la machine",
+    "Ne placez pas vos mains près d'une partie mobile de la machine",
+    "N'effectuez aucun réglage lorsque la machine est en marche",
+  ];
+
+  const consignesNe17LSleeveuse = [
+    ...consignesNe17LStandard,
+    "Ne pas mettre les mains près des surfaces chaudes du tunnel",
+  ];
+
+  const machines17L: MachineSidel[] = [
+    {
+      numero: "221",
+      machine: "ETIQUETEUSE",
+      code: "17L-ETIQ",
+      intervention: "17L-HBD-ETIQ",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF ETIQUETEUSE 17 LITRES",
+      epiOverride: [],
+      consignesNeOverride: consignesNe17LStandard,
+      actionsOverride: [
+        { code: "ACT-00560", libelle: "NETTOYER LES ROULETTES" },
+        { code: "ACT-00561", libelle: "CONTROLER LES SUPPORTS DE MONTAGE" },
+        { code: "ACT-00562", libelle: "NETTOYER LE STOCKER" },
+        { code: "ACT-00563", libelle: "CONTROLER LES VIS , LES ECROUS ET LES BOULONS" },
+        { code: "ACT-00564", libelle: "CONTROLER LES STRUCTURES DE SOUTIEN" },
+        { code: "ACT-00565", libelle: "CONTROLER LE POTENTIOMETRE" },
+        { code: "ACT-00566", libelle: "CONTROLER LES BOUTONS" },
+        { code: "ACT-00567", libelle: "CONTROLER LES SELECTEURS" },
+        { code: "ACT-00568", libelle: "CONTROLER LES ECRANS TACTILES" },
+        { code: "ACT-00569", libelle: "CONTROLER LES VOLANTS" },
+        { code: "ACT-00570", libelle: "CONTROLER LES COURROIES" },
+        { code: "ACT-00571", libelle: "NETTOYER LE FILM D'ATTRACTION" },
+      ],
+    },
+    {
+      numero: "224",
+      machine: "REMPLISSEUSE",
+      code: "17L-REMP",
+      intervention: "17L-HBD-REMP",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF REMPLISSEUSE 17 LITRES",
+      epiOverride: [],
+      consignesNeOverride: consignesNe17LStandard,
+      actionsOverride: [
+        { code: "ACT-00023", libelle: "CONTROLER VISUELLEMENT LA MACHINE ( BRUIT ANORMAL , FUITE )" },
+        { code: "ACT-00289", libelle: "VERIFIER LE BRUIT DE FONCTIONNEMENT DU MOTEUR ET DE LA TEMPERATURE" },
+        { code: "ACT-00291", libelle: "VERIFIER LES FILTRES DE BUSES DE REMPLISSAGE." },
+        { code: "ACT-00292", libelle: "NETTOYER DES FILTRES DE BUSE DE REMPLISSAGE" },
+        { code: "ACT-00293", libelle: "VERIFIER LES JOINTS TORIQUES DE LA BUSE DE REMPLISSAGE" },
+        { code: "ACT-00301", libelle: "GRAISSER LA MACHINE SI NECESSAIRE" },
+        { code: "ACT-00359", libelle: "VERIFIER LES CONNEXIONS DES CABLES" },
+        { code: "ACT-00365", libelle: "VERIFIER L'AIR DE LA MACHINE AVANT UTILISATION" },
+        { code: "ACT-00366", libelle: "VERIFIER LA POUSSIERE ET DE LA SALETE." },
+        { code: "ACT-00542", libelle: "VERIFIER L'ENSEMBLE DES CAPTEURS DE LA MACHINE" },
+        { code: "ACT-00674", libelle: "VERIFIER LES GUIDES ET SUPPORTS DU CONVOYEUR A BOUCHONS" },
+        { code: "ACT-00675", libelle: "CONTROLER L'ETANCHEITE DES RACCORDS ET FLEXIBLES" },
+        { code: "ACT-00676", libelle: "CONTROLER LE SERRAGE DES VIS ET SUPPORTS MOBILES" },
+        { code: "ACT-00677", libelle: "VERIFIER LE BON ALIGNEMENT DES BOUTEILLES" },
+        { code: "ACT-00678", libelle: "INSPECTER LA CHAINE CINEMATIQUE ( MOTEUR , ENGRENANGES , REDUCTEUR )" },
+        { code: "ACT-00679", libelle: "NETTOYER LA TREMIE DES BOUCHONS" },
+      ],
+    },
+    {
+      numero: "222",
+      machine: "SLEEVEUSE",
+      code: "17L-SLEE",
+      intervention: "17L-HBD-SLEE",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF SLEEVEUSE 17L",
+      epiOverride: [],
+      consignesNeOverride: consignesNe17LSleeveuse,
+      actionsOverride: [
+        { code: "ACT-00614", libelle: "CONTROLER LE BRUIT DE FONCTIONNEMENT DE LA TURBINE" },
+        { code: "ACT-00639", libelle: "VERIFIER L'ETAT DES CONVOYEURS ( CHAINE , TAPIS , GALETS )" },
+        { code: "ACT-00668", libelle: "CONTROLER L'ETAT DES CABLES ELECTRIQUES" },
+        { code: "ACT-00681", libelle: "S'ASSURER DE LA BONNE FIXATION DES RESISTANCES" },
+        { code: "ACT-00683", libelle: "CONTROLER L'ETAT DES RESISTANCES" },
+      ],
+    },
+    {
+      numero: "223",
+      machine: "SOUFFLEUSE",
+      code: "17L-SOUF",
+      intervention: "17L-HBD-SOUF",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF SOUFFLEUSE 17 LITRES",
+      epiOverride: [],
+      consignesNeOverride: consignesNe17LStandard,
+      actionsOverride: [
+        { code: "ACT-00021", libelle: "VERIFIER LE FONCTIONNEMENT DE CLIMATISEUR ARMOIRE ELECTRIQUE" },
+        { code: "ACT-00053", libelle: "NETTOYER TOUS LES CAPTEURS" },
+        { code: "ACT-00164", libelle: "VERIFIER LE BON FONCTIONNEMENT DES VERINS" },
+        { code: "ACT-00168", libelle: "VERIFIER L'ETAT DU TAPIS" },
+        { code: "ACT-00274", libelle: "VERIFIER LES COUVERCLES ET LES INTERRUPTEURS DU BOITIER" },
+        { code: "ACT-00275", libelle: "NETTOYER LE CAPTEUR DE TEMPERATURE" },
+        { code: "ACT-00276", libelle: "VERIFIER LE FONCTIONNEMENT DES LAMPES INFRAROUGES DE CHAUFFAGE DE PREFORME" },
+        { code: "ACT-00278", libelle: "CONTROLER LE BOUTON D'ARRÊT D'URGENCE" },
+        { code: "ACT-00283", libelle: "VERIFIER QU'IL N'Y A PAS FUITE D'EAU" },
+        { code: "ACT-00333", libelle: "VERIFIER LE BON FONCTIONNEMENT DE CIRCUIT DE REFROIDISSEMENT" },
+        { code: "ACT-00385", libelle: "VERIFIER LES FUITES D'AIR" },
+        { code: "ACT-00431", libelle: "CONTROLER LES PINCES" },
+        { code: "ACT-00444", libelle: "NETTOYER TOUTES LES TOURNETTES" },
+        { code: "ACT-00452", libelle: "VERIFIER S'IL N'Y A PAS DE FUITE D'HUILE AU NIVEAU DE TOUS LES REDUCTEURS" },
+        { code: "ACT-00485", libelle: "NETTOYER LE FOUR" },
+        { code: "ACT-00490", libelle: "NETTOYER L'ARMOIRE ELECTRIQUE" },
+        { code: "ACT-00529", libelle: "NETTOYER LE RADIATEUR" },
+        { code: "ACT-00663", libelle: "CONTROLER LE SERRAGE DES VIS DE FIXATION DES MOULES" },
+        { code: "ACT-00664", libelle: "CONTROLER L'USURE DES JOINTS DE MOULE" },
+        { code: "ACT-00665", libelle: "VERIFIER LES ROULEMENTS DES TOURNETTES" },
+        { code: "ACT-00666", libelle: "NETTOYER LE COMPRESSEUR" },
+        { code: "ACT-00667", libelle: "VERIFIER L'ENSEMBLE CHAINES-COURROIES-ACCOUPLEMENTS-POULIES" },
+        { code: "ACT-00668", libelle: "CONTROLER L'ETAT DES CABLES ELECTRIQUES" },
+        { code: "ACT-00669", libelle: "VERIFIER L'ALIGNEMENT DES GUIDES DE PREFORMES" },
+        { code: "ACT-00670", libelle: "LUBRIFIER LES AXES ET GLISSIERES" },
+        { code: "ACT-00671", libelle: "NETTOYER LES TURBINES D'ASPIRATION" },
+        { code: "ACT-00672", libelle: "VERIFIER L'ETAT DE LA TREMIE" },
+        { code: "ACT-00673", libelle: "VERIFIER LA SURCHAUFFE DE TOUS LES MOTEURS ET SERVOMOTEURS" },
+        { code: "AM-B0012", libelle: "NETTOYER ET CONTRÔLER LES MOULES DANS LA MACHINE" },
+        { code: "AM-F0008", libelle: "CONTRÔLER LA PRESSION AIR D'ALIMENTATION" },
+      ],
+    },
+  ];
+
+  for (const m of machines17L) {
+    const data = serializeTemplateFields({
+      ref: `MTC.EN:${m.numero}`,
+      titre: m.titreOverride ?? `FICHE D'ENTRETIEN PREVENTIF ${m.machine} 17L`,
+      version: "02",
+      equipement: m.code,
+      systeme: "17L",
+      intervention: m.intervention,
+      epi: m.epiOverride ?? epiCommun,
+      consignesA: m.consignesAOverride ?? consignesACommun,
+      consignesNe: m.consignesNeOverride ?? consignesNeCommun,
+      actions: m.actionsOverride ?? actionsCommunes,
+      ressources: m.ressourcesOverride ?? ressourcesCommunes,
+      actif: true,
+    });
+    await prisma.ficheTemplate.upsert({
+      where: { ref: `MTC.EN:${m.numero}` },
+      update: data,
+      create: data,
+    });
+  }
+    const epi05LStandard = [
+    { code: "EPI-BOUCHON-OREI", description: "BOUCHON D'OREILLE", quantite: 1 },
+    { code: "EPI-CAHCHE-NEZ", description: "MASQUE A POUSSIERE", quantite: 1 },
+    { code: "EPI-CASQUE", description: "CASQUE DE SECURITE", quantite: 1 },
+    { code: "EPI-CASQUE-ANTI", description: "CASQUE ANTI BRUIT", quantite: 1 },
+    { code: "EPI-CHAUSSURE", description: "CHAUSSURE DE SECURITE", quantite: 1 },
+    { code: "EPI-GANT-LAT", description: "GANT LATEX", quantite: 1 },
+    { code: "EPI-GANT-MECA", description: "GANT MECANIQUE", quantite: 1 },
+    { code: "EPI-LUNETTE-SEC", description: "LUNETTE DE SECURITE", quantite: 1 },
+    { code: "EPI-TENUE", description: "TENUE DE SECURITE", quantite: 1 },
+  ];
+
+  const epi05LFardeleuse = [
+    { code: "EPI-BOUCHON-OREI", description: "BOUCHON D'OREILLE", quantite: 1 },
+    { code: "EPI-CAHCHE-NEZ", description: "MASQUE A POUSSIERE", quantite: 1 },
+    { code: "EPI-CASQUE", description: "CASQUE DE SECURITE", quantite: 1 },
+    { code: "EPI-CASQUE-ANTI", description: "CASQUE ANTI BRUIT", quantite: 1 },
+    { code: "EPI-CHAUSSURE", description: "CHAUSSURE DE SECURITE", quantite: 1 },
+    { code: "EPI-GANT-LAT", description: "GANT LATEX", quantite: 1 },
+    { code: "EPI-GANT-MECA", description: "GANT MECANIQUE", quantite: 1 },
+    { code: "EPI-TENUE", description: "TENUE DE SECURITE", quantite: 1 },
+  ];
+
+  const ressources05L = [{ code: "RS-MECA", description: "MECANIQUE", nombre: 1, heuresPlan: 1.0 }];
+
+  // Étiqueteuse + Remplisseuse 05L : ROLLQUATTRO + roue de soufflage + tunnel
+  const consignesNe05LEtiqRemp = [
+    "Ne pas utiliser de jet d'eau sous pression pour nettoyer la machine",
+    "Ne pas vaporiser de l'eau chaude (température max. 45°C) sur les protections",
+    "Ne pas laver le groupe d'étiquetage ROLLQUATTRO",
+    "Ne pas utiliser de solvants ni de brosses abrasives",
+    "Ne pas fumer pendant l'intervention",
+    "Ne pas boire pendant l'intervention",
+    "Ne jamais entraîner la roue de soufflage en rotation en la tirant ou en la poussant",
+    "Ne jamais intervenir sur la machine lors d'un \"test des électrovannes fixes ou mobiles\" : portes ouvertes, la machine est en énergie (eau, air, électricité, etc.)",
+    "Ne jamais utiliser d'acétone ou de produits dérivés",
+    "Ne jamais effectuer de travaux de soudure électrique sur la machine",
+    "Ne jamais remettre dans le circuit de production des articles tombés, manipulés ou éjectés par la machine",
+    "Ne placez pas vos mains près d'une partie mobile de la machine",
+    "N'effectuez aucun réglage lorsque la machine est en marche",
+    "Ne pas mettre les mains près des surfaces chaudes du tunnel",
+  ];
+
+  // Chiller Souffleuse 05L : liste réduite (équipement niveau 3, pas de tunnel/roue de soufflage)
+  const consignesNe05LChiller = [
+    "Ne pas utiliser de jet d'eau sous pression pour nettoyer la machine",
+    "Ne pas utiliser de solvants ni de brosses abrasives",
+    "Ne pas fumer pendant l'intervention",
+    "Ne pas boire pendant l'intervention",
+    "Ne jamais intervenir sur la machine lors d'un \"test des électrovannes fixes ou mobiles\" : portes ouvertes, la machine est en énergie (eau, air, électricité, etc.)",
+    "Ne jamais utiliser d'acétone ou de produits dérivés",
+    "Ne jamais effectuer de travaux de soudure électrique sur la machine",
+    "Ne jamais remettre dans le circuit de production des articles tombés, manipulés ou éjectés par la machine",
+    "Ne placez pas vos mains près d'une partie mobile de la machine",
+    "N'effectuez aucun réglage lorsque la machine est en marche",
+  ];
+
+  const machines05L: MachineSidel[] = [
+    {
+      numero: "085",
+      machine: "ETIQUETEUSE",
+      code: "05L-ETIQ",
+      intervention: "5L-HBD-ETIQ",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF ETIQUETEUSE 5 LITRES",
+      epiOverride: epi05LStandard,
+      ressourcesOverride: ressources05L,
+      consignesNeOverride: consignesNe05LEtiqRemp,
+      actionsOverride: [
+        { code: "ACT-00303", libelle: "NETTOYER LES ROULETTES" },
+        { code: "ACT-00304", libelle: "NETTOYER LE FILM D'ATTRACTION" },
+        { code: "ACT-00305", libelle: "NETTOYER LE STOCKER D'ETIQUETTES" },
+        { code: "ACT-00306", libelle: "NETTOYER GENERALEMENT DE LA MACHINE" },
+        { code: "ACT-00307", libelle: "GRAISSER LA CHAINE DE LA MACHINE" },
+        { code: "ACT-00308", libelle: "GRAISSER LE CONVOYEUR" },
+        { code: "ACT-00309", libelle: "VERIFIER LES VIS, ECROUS ET BOULONS" },
+        { code: "ACT-00310", libelle: "VERIFIER LES STRUCTURES DE SOUTIEN" },
+        { code: "ACT-00311", libelle: "VERIFIER LES BOUTONS" },
+        { code: "ACT-00312", libelle: "VERIFIER LES POTENTIOMETRES" },
+        { code: "ACT-00313", libelle: "VERIFIER LES SELECTEURS" },
+        { code: "ACT-00314", libelle: "VERIFIER LE MANDRIN (PRESSION D'AIR, AXE, CLAVETAGE ...)" },
+        { code: "ACT-00315", libelle: "VERIFIER S'IL Y A DES USURES SUR LES COLONNES DE GUIDAGE" },
+        { code: "ACT-00316", libelle: "VERIFIER S'IL Y A DES USURES SUR LES BAGUES D'ARTICULATIONS" },
+        { code: "ACT-00317", libelle: "VERIFIER LES FUITES D'AIR" },
+        { code: "ACT-00318", libelle: "VERIFIER L'ETAT DES MOULES DE LA MACHINE DE COUPE, USURE, ETC" },
+        { code: "ACT-00319", libelle: "VERIFIER LA TENSION DE TAPIS CONVOYEUR, SERRER EN CAS DE BESOIN" },
+        { code: "ACT-00320", libelle: "NETTOYER L'ANCIENNE GRAISSE ET HUILE" },
+        { code: "ACT-00321", libelle: "GRAISSER TOUT LES POINTS DE LA MACHINE" },
+        { code: "ACT-00322", libelle: "LUBRIFIER TOUT LES POINTS DE LA MACHINE" },
+        { code: "ACT-00323", libelle: "NETTOYER TOUT LES COUVERCLES A L'EAU + OMO" },
+        { code: "ACT-00324", libelle: "NETTOYER LES FLEXIBLES ET LES BUSES DE REMPLISSAGE A L'EAU+OMO" },
+      ],
+    },
+    {
+      numero: "169",
+      machine: "FARDELEUSE",
+      code: "05L-FARD",
+      intervention: "5L-HBD-FARD",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF FARDELEUSE 5 LITRES",
+      epiOverride: epi05LFardeleuse,
+      ressourcesOverride: ressources05L,
+      consignesNeOverride: consignesNe17LSleeveuse,
+      actionsOverride: [
+        { code: "ACT-00336", libelle: "ARRANGER LES AMOIRES ELECTRIQUES" },
+        { code: "ACT-00337", libelle: "VERIFIER SYSTEME DE DEROULEUR BOBINE" },
+        { code: "ACT-00338", libelle: "VERIFIER L'ETAT DE CONVOYEUR DE DECHETS (TENSION DE TAPIS, ROULEAUX)" },
+        { code: "ACT-00341", libelle: "NETTOYER LA MACHINE DE TOUTE SALETE" },
+        { code: "ACT-00342", libelle: "VÉRIFIER L'ETAT DES BARRES DE NAPPAGE" },
+        { code: "ACT-00344", libelle: "VÉRIFIER L'ETAT DES ROULEAUX TENDEUR DE FILM" },
+        { code: "ACT-00345", libelle: "VERIFIER L'ETAT DES SEPARATEURS DE BOUTEILLES" },
+        { code: "ACT-00346", libelle: "VÉRIFIER LE BON FONCTIONNEMENT DU VIBRATEUR" },
+        { code: "ACT-00347", libelle: "VÉRIFIER LE CAPTEUR ELECTRIQUE" },
+      ],
+    },
+    {
+      numero: "161",
+      machine: "REMPLISSEUSE",
+      code: "05L-REMP",
+      intervention: "5L-HBD-REMP",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF REMPLISSEUSE 5 LITRES",
+      epiOverride: epi05LStandard,
+      ressourcesOverride: ressources05L,
+      consignesNeOverride: consignesNe05LEtiqRemp,
+      actionsOverride: [
+        { code: "ACT-00127", libelle: "CONTROLER LE FILTRE DES BUSES DE REMPLISSAGE" },
+        { code: "ACT-00129", libelle: "CONTROLER L'ETAT DES TETES BOUCHONNEUSES" },
+        { code: "ACT-00132", libelle: "NETTOYEZ LES TETES BOUCHONNEUSES SI NECESSAIRE" },
+        { code: "ACT-00229", libelle: "VERIFIER L'ETAT DES FLEXIBLES" },
+        { code: "ACT-00286", libelle: "NETTOYER TOUTE LA MACHINE" },
+        { code: "ACT-00287", libelle: "CONTROLER LE SYSTÈME DE TOUTE LA MACHINE" },
+        { code: "ACT-00288", libelle: "VERIFIER LES CONNEXIONS DES CABLES" },
+        { code: "ACT-00289", libelle: "VERIFIER LE BRUIT DE FONCTIONNEMENT DU MOTEUR ET DE LA TEMPERATURE" },
+        { code: "ACT-00290", libelle: "VERIFIER LES PIECES SPECIFIQUES AU RACCORDEMENT DU MOTEUR." },
+        { code: "ACT-00291", libelle: "VERIFIER LES FILTRES DE BUSES DE REMPLISSAGE." },
+        { code: "ACT-00292", libelle: "NETTOYER DES FILTRES DE BUSE DE REMPLISSAGE" },
+        { code: "ACT-00293", libelle: "VERIFIER LES JOINTS TORIQUES DE LA BUSE DE REMPLISSAGE" },
+        { code: "ACT-00294", libelle: "PURGER LA POMPE A EAU AVANT FONCTIONNEMENT" },
+        { code: "ACT-00295", libelle: "VERIFIER L'AIR DE LA MACHINE AVANT L'UTILISATION" },
+        { code: "ACT-00296", libelle: "VERIFIER LA POUSSIERE ET LA SALETE" },
+        { code: "ACT-00297", libelle: "CONTROLER VISUELLEMENT TOUTE LA MACHINE" },
+        { code: "ACT-00298", libelle: "VERIFIER L'ETAT DES GRIPPEURS" },
+        { code: "ACT-00299", libelle: "VERIFIER L'ETAT DES ETOILES" },
+        { code: "ACT-00300", libelle: "VERIFIER L'ETAT DES ENGRENAGES" },
+        { code: "ACT-00301", libelle: "GRAISSER LA MACHINE SI NECESSAIRE" },
+        { code: "ACT-00302", libelle: "CONTROLER LES CONVOYEURS DE LA TABLE D'ACCUMULATION" },
+        { code: "ACT-00471", libelle: "VERIFIER L'ETAT DES ELECTROVANNES" },
+        { code: "ACT-00679", libelle: "NETTOYER LA TREMIE DES BOUCHONS" },
+        { code: "ACT-00686", libelle: "VERIFIER LE BRUIT DES ROULEMENTS AU NIVEAU DE L'ETOILE D'ENTREE" },
+        { code: "ACT-00687", libelle: "CONTROLER L'ALIGNEMENT ET LE SERRAGE AU NIVEAU DE L'ETOILE D'ENTREE" },
+        { code: "ACT-00688", libelle: "VERIFIER L'USURE DES MACHOIRES DES GRIPPERS" },
+        { code: "ACT-00689", libelle: "CONTROLER LES AXES , ARTICULATIONS ET RESSORTS AU NIVEAU DES GRIPPERS" },
+        { code: "ACT-00690", libelle: "CONTROLER LA PRESSION" },
+        { code: "ACT-00691", libelle: "VERIFIER L'ETAT DE LA POMPE DE LA RINCEUSE" },
+        { code: "ACT-00692", libelle: "CONTROLER L'IMPRIMANTE" },
+        { code: "ACT-00693", libelle: "NETTOYER LE CLIMATISEUR" },
+      ],
+    },
+    {
+      numero: "050",
+      machine: "SLEEVEUSE",
+      code: "05L-SLEE",
+      intervention: "5L-HBD-SLEE",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF SLEEVEUSE CHAINE DE 5 LITRES",
+      epiOverride: epi05LStandard,
+      ressourcesOverride: ressources05L,
+      consignesNeOverride: consignesNe17LSleeveuse,
+      actionsOverride: [
+        { code: "ACT-00325", libelle: "VERIFIER LES SUPPORTS DE PLAQUE DE CHAUFFE ET SOUDURE" },
+        { code: "ACT-00326", libelle: "VERIFIER L'ETAT DE ROULEMENTS DE TOUS LES ROULEAUX" },
+        { code: "ACT-00327", libelle: "VERIFIER L'ETAT ET LA BONNE FIXATION DE TOUS LES CAPTEURS ET PHOTOCELLULES" },
+        { code: "ACT-00328", libelle: "VERIFIER L'ETAT DE LA PLAQUE DE SOUDURE (DEBRIS, USURE, ETC.)" },
+        { code: "ACT-00329", libelle: "VERIFIER L'ETAT DES TEFLONS DES PLAQUES DE CHAUFFAGE" },
+        { code: "ACT-00330", libelle: "VERIFIER LE BON FONCTIONNEMENT DE LA MACHINE A VIDE" },
+        { code: "ACT-00331", libelle: "VERIFIER LE FORMING : USURE, ETANCHEITE, ARTICULATIONS" },
+        { code: "ACT-00332", libelle: "VERIFIER LE SERVO DE TIRAGE FILM : FIXATION,CONNEXIONS,JEU" },
+        { code: "ACT-00333", libelle: "VERIFIER LE BON FONCTIONNEMENT DE CIRCUIT DE REFROIDISSEMENT" },
+        { code: "ACT-00334", libelle: "VERIFIER L'ETAT ET LE SERRAGE DES BARS DE MOUVEMENT BLOC DE COUPE" },
+      ],
+    },
+    {
+      numero: "142",
+      machine: "SOUFFLEUSE-CHILLER",
+      code: "05L-SOUF-CHIL",
+      intervention: "5L-HBD-SOUF-CHIL",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF CHILLER SOUFFLEUSE 05 LITRES / 17 LITRES",
+      epiOverride: epi05LStandard,
+      ressourcesOverride: ressources05L,
+      consignesNeOverride: consignesNe05LChiller,
+      actionsOverride: [
+        { code: "ACT-00283", libelle: "VERIFIER QU'IL N'Y A PAS FUITE D'EAU" },
+        { code: "ACT-00387", libelle: "NETTOYER TOUTE LA MACHINE" },
+        { code: "ACT-00535", libelle: "CONTROLER LA PROPRETE DU CONDENSATEUR" },
+        { code: "ACT-00536", libelle: "VERIFIEZ QU'IL N'Y A PAS DE FUITE D'HUILE DANS LE CIRCUIT DE GAZ" },
+        { code: "ACT-00537", libelle: "CONTROLER LE NIVEAU D'EAU" },
+      ],
+    },
+    {
+      numero: "130",
+      machine: "SOUFFLEUSE",
+      code: "05L-SOUF",
+      intervention: "5L-HBD-SOUF",
+      titreOverride: "FICHE D'ENTRETIEN PREVENTIF SOUFFLEUSE 5 LITRES",
+      epiOverride: epi05LStandard,
+      ressourcesOverride: ressources05L,
+      consignesNeOverride: consignesNe17LStandard,
+      actionsOverride: [
+        { code: "ACT-00274", libelle: "VERIFIER LES COUVERCLES ET LES INTERRUPTEURS DU BOITIER" },
+        { code: "ACT-00275", libelle: "NETTOYER LE CAPTEUR DE TEMPERATURE" },
+        { code: "ACT-00276", libelle: "VERIFIER LE FONCTIONNEMENT DES LAMPES INFRAROUGES DE CHAUFFAGE DE PREFORME" },
+        { code: "ACT-00277", libelle: "VERIFIER L'ETAT DES GRIPPEURS" },
+        { code: "ACT-00278", libelle: "CONTROLER LE BOUTON D'ARRÊT D'URGENCE" },
+        { code: "ACT-00279", libelle: "NETTOYER LE SUPPORT DE PREFORME ET LES DIAPOSITIVES" },
+        { code: "ACT-00280", libelle: "LUBRIFIER LEGEREMENT LE SUPPORT DE PREFORME ET LES DIAPOSITIVES" },
+        { code: "ACT-00281", libelle: "VERIFIER LE MOULIN" },
+        { code: "ACT-00282", libelle: "VERIFIER L'ALUMINIUM DE REFROIDISSEMENT" },
+        { code: "ACT-00283", libelle: "VERIFIER QU'IL N'Y A PAS FUITE D'EAU" },
+        { code: "ACT-00284", libelle: "VERIFIER L'USURE DU TAPIS" },
+        { code: "ACT-00285", libelle: "VERIFIER L'ETAT DES GAINES DU CONVOYEUR A AIR" },
+        { code: "ACT-00349", libelle: "GRAISSER TOUTES LES ARTICULATIONS" },
+        { code: "ACT-00352", libelle: "NETTOYER A L'AIR L'ARMOIRE ELECTRIQUE" },
+        { code: "ACT-00395", libelle: "VERIFIER L'ETAT DES ROULEMENTS ET DES PALIERS" },
+        { code: "ACT-00529", libelle: "NETTOYER LE RADIATEUR" },
+        { code: "ACT-00629", libelle: "NETTOYER LA TURBINE" },
+        { code: "ACT-00693", libelle: "NETTOYER LE CLIMATISEUR" },
+        { code: "ACT-00694", libelle: "VERIFIER L'ETAT ET LE JEU DES AXES MANIPULATEUR" },
+        { code: "ACT-00695", libelle: "VERIFIER LE SERRAGE DES FIXATIONS DU MANIPULATEUR" },
+        { code: "ACT-00696", libelle: "VERIFIER L'ETAT DES CHARNIERES ET AXES DES ARTICULATIONS" },
+        { code: "ACT-00697", libelle: "GRAISSER LES PARTIES MOBILES" },
+        { code: "ACT-00698", libelle: "VERIFIER LES 4 CAPTEURS ( COMPTE / DOUTE ) - MONTE DESCENTE DU MANIPULATEUR" },
+        { code: "ACT-00699", libelle: "CONTROLER LE JEU ET LE SERRAGE DE L'ETOILE D'ENTREE" },
+        { code: "ACT-00700", libelle: "VERIFIER LA CONTINUITE ELECTRIQUE" },
+        { code: "ACT-00701", libelle: "VERIFIER L'ETAT DES CABLES DES RESISTANCES" },
+        { code: "ACT-00702", libelle: "VERIFIER L'ETAT DES CIRCLIPS DES TOURNETTES" },
+        { code: "ACT-00703", libelle: "CONTROLER LA FIXATION DES 2 CAPTEURS PISTON / VERIN ET OUVERTURE FERMETURE GRIPPEUR" },
+        { code: "ACT-00704", libelle: "VERIFIER LA POMPE HYDRAULIQUE DE L'INVERSEUR" },
+        { code: "ACT-00705", libelle: "VERIFIER L'ETAT DES TAPIS CONVOYEUR PREFORMES" },
+      ],
+    },
+  ];
+
+  let chiller05LTemplateId: string | undefined;
+
+  for (const m of machines05L) {
+    const data = serializeTemplateFields({
+      ref: `MTC.EN:${m.numero}`,
+      titre: m.titreOverride ?? `FICHE D'ENTRETIEN PREVENTIF ${m.machine} 05L`,
+      version: "02",
+      equipement: m.code,
+      systeme: "05L",
+      intervention: m.intervention,
+      epi: m.epiOverride ?? epiCommun,
+      consignesA: m.consignesAOverride ?? consignesACommun,
+      consignesNe: m.consignesNeOverride ?? consignesNeCommun,
+      actions: m.actionsOverride ?? actionsCommunes,
+      ressources: m.ressourcesOverride ?? ressourcesCommunes,
+      actif: true,
+    });
+    const template = await prisma.ficheTemplate.upsert({
+      where: { ref: `MTC.EN:${m.numero}` },
+      update: data,
+      create: data,
+    });
+    if (m.machine === "SOUFFLEUSE-CHILLER") {
+      chiller05LTemplateId = template.id;
+    }
+  }
+const machinesSipa: MachineSidel[] = [
+  {
+    numero: "080", // Ref: MTC.EN:080
+    machine: "ETIQUETEUSE",
+    code: "SIPA-ETIQ",
+    intervention: "SPA-HBD-ETIQ",
+    titreOverride: "FICHE D'ENTRETIEN PREVENTIF ETIQUETEUSE SIPA",
+    epiOverride: [], // aucun EPI listé sur la fiche source
+    ressourcesOverride: [
+      { code: "RS-MECA", description: "MECANIQUE", nombre: 1, heuresPlan: 8.0 },
+      { code: "RS-MACH", description: "MACHINISTE", nombre: 1, heuresPlan: 8.0 },
+    ],
+    consignesNeOverride: [
+      "Ne pas utiliser de jet d'eau sous pression pour nettoyer la machine",
+      "Ne pas vaporiser de l'eau chaude (température max. 45°C) sur les protections",
+      "Ne pas laver le groupe d'étiquetage ROLLQUATTRO",
+      "Ne pas utiliser de solvants ni de brosses abrasives",
+      "Ne pas fumer pendant l'intervention",
+      "Ne pas boire pendant l'intervention",
+      "Ne jamais intervenir sur la machine lors d'un \"test des électrovannes fixes ou mobiles\" : portes ouvertes, la machine est en énergie (eau, air, électricité, etc.)",
+      "Ne jamais utiliser d'acétone ou de produits dérivés",
+      "Ne jamais effectuer de travaux de soudure électrique sur la machine",
+      "Ne jamais remettre dans le circuit de production des articles tombés, manipulés ou éjectés par la machine",
+      "Ne placez pas vos mains près d'une partie mobile de la machine",
+      "N'effectuez aucun réglage lorsque la machine est en marche",
+    ],
+    // consignesAOverride non précisé -> utilise consignesACommun (correspond exactement à la fiche source)
+    actionsOverride: [
+      { code: "ACT-00489", libelle: "NETTOYER LE BLOC SECHOIR DES BOUTEILLES" },
+      { code: "ACT-00490", libelle: "NETTOYER L'ARMOIRE ELECTRIQUE" },
+      { code: "ACT-00491", libelle: "NETTOYER LES PLATEAUX DU CARROUSEL" },
+      { code: "ACT-00492", libelle: "GRAISSER LES PLATEAUX DU CARROUSEL" },
+      { code: "ACT-00493", libelle: "NETTOYER LES ETOILES ET LES VIS SANS-FIN" },
+      { code: "ACT-00494", libelle: "NETTOYER LE BLOC DE COLLE" },
+      { code: "ACT-00495", libelle: "NETTOYAGE DE LA BANDE TRANSPORTEUR" },
+      { code: "ACT-00496", libelle: "NETTOYER LA POUSSIERE AUTOUR DE LA MACHINE" },
+      { code: "ACT-00497", libelle: "CHANGER LE FILTRE A AIR SI NECESSAIRE" },
+      { code: "ACT-00498", libelle: "NETTOYER TOUTES LES PHOTOCELLULES" },
+      { code: "ACT-00499", libelle: "NETTOYER LES ROULEAUX DE TRACTIONS" },
+      { code: "ACT-00500", libelle: "VERIFIER SI LES ROULEAUX SONT USES" },
+      { code: "ACT-00501", libelle: "GRAISSER LE ROULEAU DE DECOUPE" },
+      { code: "ACT-00502", libelle: "NETTOYER LE ROULEAU RENVOI BOBINE (TEFLON)" },
+      { code: "ACT-00503", libelle: "NETTOYER LE ROULEAU DE COLLE" },
+      { code: "ACT-00504", libelle: "NETTOYER LA BANDE TRANSPORTEUR" },
+      { code: "ACT-00505", libelle: "CONTROLER LA COURROIE DE LA VIS SANS FIN" },
+      { code: "ACT-00506", libelle: "CONTROLER LA TENSION DE LA COURROIE DE TRANSMISSION" },
+      { code: "ACT-00507", libelle: "GRAISSER LES ACCOUPLEMENTS" },
+      { code: "ACT-00508", libelle: "GRAISSER LE ROULEMENT CARROUSEL CENTRAL" },
+      { code: "ACT-00509", libelle: "NETTOYER TOUTE LA MACHINE" },
+      { code: "ACT-00510", libelle: "NETTOYER LE FILTRE A AIR DU SECHEUR DE BOUTEILLES" },
+    ],
+  },
+  {
+    numero: "082", // Ref: MTC.EN:082
+    machine: "FARDELEUSE",
+    code: "SIPA-FARD",
+    intervention: "SPA-HBD-FARD",
+    titreOverride: "FICHE D'ENTRETIEN PREVENTIF FARDELEUSE SIPA",
+    epiOverride: [], // aucun EPI listé sur la fiche source
+    // TODO: aucune section "ressources requises" visible sur la fiche source (contrairement à
+    // SIPA-ETIQ) — à confirmer si l'absence est volontaire ou si la fiche réelle en comporte.
+    ressourcesOverride: [],
+    // consignesAOverride/consignesNeOverride non précisés -> correspondent exactement
+    // à consignesACommun / consignesNeCommun sur la fiche source
+    actionsOverride: [
+      { code: "ACT-00511", libelle: "NETTOYER LE CONVOYEUR" },
+      { code: "ACT-00512", libelle: "NETTOYER LES PROTECTIONS" },
+      { code: "ACT-00513", libelle: "NETTOYER LES BACS RECOLTE LIQUIDES" },
+      { code: "ACT-00514", libelle: "LUBRIFIER LES CHAINES" },
+      { code: "ACT-00515", libelle: "GRAISSER LES SUPPORTS DE ROULEMENTS" },
+      { code: "ACT-00516", libelle: "VERIFIER L'USURE DU TAPIS" },
+      { code: "ACT-00517", libelle: "VERIFIER L'USURE DES BANDES" },
+      { code: "ACT-00518", libelle: "NETTOYER LA MAILLE DE SEPARATION" },
+      { code: "ACT-00519", libelle: "NETTOYER LES VANNES DU GROUPE DE SEPARATION" },
+      { code: "ACT-00520", libelle: "GRAISSER LE PATIN ET LES GUIDES" },
+      { code: "ACT-00521", libelle: "NETTOYER LA LAME COUPE FILM" },
+      { code: "ACT-00522", libelle: "VERIFIER LES COURROIES DU GROUPE COUPE FILM" },
+      { code: "ACT-00523", libelle: "VERIFIER LES ROULEAUX DU GROUPE COUPE FILM" },
+      { code: "ACT-00524", libelle: "VERIFIER LE RACCORD ARBRE PORTE BOBINE" },
+      { code: "ACT-00525", libelle: "CONTROLER LA MAILLE DU FOUR" },
+    ],
+  },
+  {
+    numero: "079", // Ref: MTC.EN:079
+    machine: "REMPLISSEUSE",
+    code: "SIPA-REMP",
+    intervention: "SPA-HBD-REMP",
+    titreOverride: "FICHE D'ENTRETIEN PREVENTIF REMPLISSEUSE SIPA",
+    epiOverride: [], // aucun EPI listé sur la fiche source
+    // TODO: aucune section "ressources requises" visible sur la fiche source — à confirmer.
+    ressourcesOverride: [],
+    consignesNeOverride: consignesNeCommun.slice(0, 11), // pas de ligne "tunnel" sur cette fiche
+    // consignesAOverride non précisé -> correspond exactement à consignesACommun
+    actionsOverride: [
+      { code: "ACT-00456", libelle: "VERIFIER LES VOYANTS DE TOUS LES CAPTEURS ET LEURS POSITIONS" },
+      { code: "ACT-00457", libelle: "VERIFIER LES ETOILES : PRESENCE DE JEU OU PAS" },
+      { code: "ACT-00458", libelle: "VERIFIER L'ETAT DES GRIPPEURS" },
+      { code: "ACT-00459", libelle: "VERIFIER LA BOUCHONNEUSE" },
+      { code: "ACT-00460", libelle: "VERIFIER LA COURROIE DE TRANSMISSION" },
+      { code: "ACT-00461", libelle: "VERIFIER DU TRAIN D'ENGRENAGE" },
+      { code: "ACT-00462", libelle: "VERIFIER DES FUITES D'AIR" },
+      { code: "ACT-00463", libelle: "VERIFIER LES CAMES (VOIR S'IL Y A DES USURES)" },
+      { code: "ACT-00464", libelle: "VERIFIER LES ROULEMENTS PLASTIQUES DES PISTONS" },
+      { code: "ACT-00465", libelle: "VERIFIER LES BUSES DE REMPLISSAGE" },
+      { code: "ACT-00466", libelle: "NETTOYER LE FILTRE METALLIQUE" },
+      { code: "ACT-00467", libelle: "NETTOYER LE FILTRE DE LA RINCEUSE" },
+      { code: "ACT-00468", libelle: "NETTOYER LA TREMIE FLAT 1" },
+      { code: "ACT-00469", libelle: "LAVER LA MACHINE AVEC LE CATCHER" },
+      { code: "ACT-00470", libelle: "LAVER LA CUVE DE DOSAGE ET CHAUFFAGE" },
+      { code: "ACT-00471", libelle: "VERIFIER L'ETAT DES ELECTROVANNES" },
+      { code: "ACT-00472", libelle: "VERIFIER L'ETAT DES FILTRES ENTREE PRODUCTION (METALLIQUE)" },
+      { code: "ACT-00473", libelle: "VERIFIER L'ETAT DES BUSES DE REMPLISSAGE" },
+      { code: "ACT-00474", libelle: "VERIFIER L'ETAT DES FOSSES BOUTEILLES" },
+      { code: "ACT-00475", libelle: "VERIFIER L'ETAT DES TETES DU BOUCHONNEMENT" },
+      { code: "ACT-00476", libelle: "VERIFIER L'ETAT DES ETOILES" },
+      { code: "ACT-00477", libelle: "VERIFIER L'ETAT DES CAPTEURS" },
+      { code: "ACT-00478", libelle: "VERIFIER L'ETAT DES CABINES DE REMPLISSAGE" },
+      { code: "ACT-00479", libelle: "VERIFIER L'ETAT DES BUSES DE LUBRIFICATION" },
+      { code: "ACT-00480", libelle: "VERIFIER L'ETAT DES CAMES" },
+    ],
+  },
+    {
+    numero: "081", // Ref: MTC.EN:081
+    machine: "SLEEVEUSE",
+    code: "SIPA-SLEE",
+    intervention: "SPA-HBD-SLEE",
+    titreOverride: "FICHE D'ENTRETIEN PREVENTIF SLEEVEUSE SIPA",
+    epiOverride: [], // aucun EPI listé sur la fiche source
+    ressourcesOverride: [], // aucune section "ressources requises" sur la fiche source
+    // consignesAOverride/consignesNeOverride non précisés -> correspondent exactement
+    // à consignesACommun / consignesNeCommun sur la fiche source
+    actionsOverride: [
+      { code: "ACT-00481", libelle: "CONTROLER LES CAPTEURS" },
+      { code: "ACT-00482", libelle: "GRAISSER LES DEUX VIS D'ALIMENTATION ET LES ROULEAUX SUPERIEURS" },
+      { code: "ACT-00483", libelle: "NETTOYER LES LAMES" },
+      { code: "ACT-00484", libelle: "VERIFIER LA BONNE FIXATION DES 4 LAMES" },
+      { code: "ACT-00485", libelle: "NETTOYER LE FOUR" },
+      { code: "ACT-00486", libelle: "VERIFIER LES CAPTEURS LECTEURS DE METAL" },
+      { code: "ACT-00487", libelle: "VERIFIER LES COURROIES DES VIS D'ALIMENTATION" },
+      { code: "ACT-00488", libelle: "NETTOYER LE CONVOYEUR" },
+    ],
+  },
+  {
+    numero: "257", // Ref: MTC.EN:257
+    machine: "SOUFFLEUSE-CHILLER",
+    code: "SIPA-SOUF-CHI",
+    intervention: "SPA-HBD-SOUF-CHILL",
+    titreOverride: "FICHE D'ENTRETIEN PREVENTIF CHILLER SOUFFLEUSE SIPA",
+    epiOverride: [],
+    consignesAOverride: [], // pas de section "consignes de sécurité" sur la fiche source
+    consignesNeOverride: [],
+    ressourcesOverride: [],
+    actionsOverride: [
+      { code: "ACT-00529", libelle: "NETTOYER LE RADIATEUR" },
+      { code: "ACT-00530", libelle: "NETTOYER LE FILTRE RETOUR." },
+      { code: "ACT-00531", libelle: "CONTROLER LA POMPE (BRUIT)" },
+      { code: "ACT-00532", libelle: "S'ASSURER DE L'HYGIÈNE DE LA MACHINE (ABSENCE DE POUSSIÈRE,GRAISSE,HUILE ET AUTRE ÉLÉMENT SALISSANT)" },
+      { code: "ACT-00533", libelle: "CONTRÔLER LES FUITE D'AIR / EAU / HUILE." },
+      { code: "ACT-00534", libelle: "VÉRIFIER S'IL Y A PAS DE BRUIT ANORMAL SUR L'ENSEMBLE DE LA MACHINE." },
+    ],
+  },
+  {
+    numero: "078", // Ref: MTC.EN:078
+    machine: "SOUFFLEUSE",
+    code: "SIPA-SOUF",
+    intervention: "SPA-HBD-SOUF",
+    titreOverride: "FICHE D'ENTRETIEN PREVENTIF SOUFFLEUSE SIPA",
+    epiOverride: [],
+    ressourcesOverride: [], // aucune section "ressources requises" sur la fiche source
+    consignesNeOverride: consignesNe17LStandard, // roue de soufflage présente, pas de ligne tunnel
+    actionsOverride: [
+      { code: "ACT-00411", libelle: "CONTROLER LA CABINE DE LA MACHINE" },
+      { code: "ACT-00412", libelle: "CONTROLER LES PHOTOCELLULES DE LA TREMIE ET DU DISPOSITIF D'ALIGNEMENT DES PREFORMES" },
+      { code: "ACT-00413", libelle: "NETTOYER LA DIAPOSITIVE ALIMENTATION PREFORME" },
+      { code: "ACT-00414", libelle: "NETTOYER LA LENTILLE DU PYROMETRE OPTIQUE" },
+      { code: "ACT-00415", libelle: "CONTROLER LE PYROMETRE OPTIQUE" },
+      { code: "ACT-00416", libelle: "LUBRIFIER LES BAGUES DU MOULE DE SOUFFLAGE" },
+      { code: "ACT-00417", libelle: "CHANGER LE CULOT ET RACCORDS RAPIDE DU MOULE DE SOUFFLAGE" },
+      { code: "ACT-00418", libelle: "NETTOYER LE MOULE" },
+      { code: "ACT-00419", libelle: "NETTOYER LES GUIDES DE COULISSEMENT DES CONTENEURS" },
+      { code: "ACT-00420", libelle: "CONTRÔLER LES FUITES D'EAU DU CIRCUIT DE REFROIDISSEMENT" },
+      { code: "ACT-00421", libelle: "CONTROLER DE LA REDUCTION DE LA PRESSION DU CIRCUIT PNEUMATIQUE DE LA LIGNE MANUTENTION" },
+      { code: "ACT-00422", libelle: "CONDENSER LE FILTRE DE MOUVEMENT" },
+      { code: "ACT-00423", libelle: "VERIFIER L'USURE CENTRAGE" },
+      { code: "ACT-00424", libelle: "VERIFIER LA TENSION DU COURROIE D'EXTRACTION VERTICAL" },
+      { code: "ACT-00425", libelle: "CONTROLER LES FUITES D'HUILE MOTOREDUCTEURS TREMIE" },
+      { code: "ACT-00426", libelle: "CONTROLER L'HUILE MOTOREDUCTEUR MOTORISATION" },
+      { code: "ACT-00427", libelle: "CONTROLER LA SYNCHRONISATION DE LA ROUE DU FOUR ,SOUFFLAGE ,TRANSPORT DES PREFORMES ET DES CONTENEURS" },
+      { code: "ACT-00428", libelle: "LUBRIFIER LES CHARIOTS, LES ROULEAUX ET LES CAMES DE LA ROUE DU FOUR" },
+      { code: "ACT-00429", libelle: "LUBRIFIER LES RESSORTS DE TORSION ET LES ROULEAUX DES BARS DE TRANSPORTS DES PREFORMES/COTENEURS" },
+      { code: "ACT-00430", libelle: "LUBRIFIER LES CAMES D'ORIENTATION DES BARS DES ROUES DE TRANSPORTS DES PREFORMES/CONTENEURS" },
+      { code: "ACT-00431", libelle: "CONTROLER LES PINCES" },
+      { code: "ACT-00432", libelle: "CONTROLER LA PRESSION D'AIR DE MANUTENTION DES TIGES D'ETIRAGE" },
+      { code: "ACT-00433", libelle: "LUBRIFIER LES DOUILLES" },
+      { code: "ACT-00434", libelle: "CONTROLER LE SYSTEME DE FILTRE A EAU" },
+      { code: "ACT-00435", libelle: "CONTROLER LE FILTRE DU CIRCUIT PNEUMATIQUE DE LA LIGNE 40 BAR" },
+      { code: "ACT-00436", libelle: "CONTROLER LA POMPE A GRAISSE AUTOMATIQUE" },
+      { code: "ACT-00437", libelle: "CONTROLER LA REDUCTION DE PRESSION ARS-PLUS" },
+      { code: "ACT-00438", libelle: "NETTOYER LE FILTRE MOTOR SORTIE SOUFFLEUSE" },
+      { code: "ACT-00439", libelle: "LUBRIFIER LES ARTICULATIONS DU MOULE" },
+      { code: "ACT-00440", libelle: "CONTROLER LA CLAMPE FEMERTURE MOULE" },
+      { code: "ACT-00441", libelle: "ENTRETENIR LE BLOC DE SOUFFLAGE ( 1 BLOC PAR SEMAINE)" },
+      { code: "ACT-00442", libelle: "NETTOYER LES CAPTEURS" },
+      { code: "ACT-00443", libelle: "CONTROLER LE TAPIS ELEVATEUR DES PREFORMES DE LA TREMIE" },
+      { code: "ACT-00444", libelle: "NETTOYER TOUTES LES TOURNETTES" },
+      { code: "ACT-00445", libelle: "VERIFIER LE SERRAGE DE TOUS LES BLOCS DE LAMPES" },
+      { code: "ACT-00446", libelle: "NETTOYER TOUS LES FILTRES A AIR DES ASPIRATEURS DU CONVOYEUR A AIR" },
+      { code: "ACT-00447", libelle: "GRAISSER TOUT LES CHARIOTS SUPERIEURS ET INFERIEURS" },
+      { code: "ACT-00448", libelle: "GRAISSER LES PALIERS" },
+      { code: "ACT-00449", libelle: "VERIFIER LE REGLAGE DES TIGES D'ETIRAGE (0,02MM ?) ENTRE LA BUTEE EN BRONZE ET LE CHARIOT" },
+      { code: "ACT-00450", libelle: "CONTROLER LES ROULEMENTS EXCENTRIQUES" },
+      { code: "ACT-00451", libelle: "CONTROLER LE NIVEAU D'HUILE DU REDUCTEUR PRINCIPAL" },
+      { code: "ACT-00452", libelle: "VERIFIER S'IL N'Y A PAS DE FUITE D'HUILE AU NIVEAU DE TOUS LES REDUCTEURS" },
+      { code: "ACT-00453", libelle: "VERIFIER LE FONCTIONNEMENT DE TOUS LES VENTILATEURS CODE +24" },
+      { code: "ACT-00454", libelle: "CONTROLER LE FILTRE A EAU DU CIRCUIT HYDROLIQUE" },
+      { code: "ACT-00455", libelle: "VERIFIER LE SERRAGE DES GRIPPERS DE LA CHAINE DU FOUR" },
+    ],
+  },
+];
+
+const sipaTemplateByMachine: Record<string, string> = {};
+
+for (const m of machinesSipa) {
+  const data = serializeTemplateFields({
+    ref: `MTC.EN:${m.numero}`,
+    titre: m.titreOverride ?? `FICHE D'ENTRETIEN PREVENTIF ${m.machine} SIPA`,
+    version: "02",
+    equipement: m.code,
+    systeme: "SIPA",
+    intervention: m.intervention,
+    epi: m.epiOverride ?? epiCommun,
+    consignesA: m.consignesAOverride ?? consignesACommun,
+    consignesNe: m.consignesNeOverride ?? consignesNeCommun,
+    actions: m.actionsOverride ?? actionsCommunes,
+    ressources: m.ressourcesOverride ?? ressourcesCommunes,
+    actif: true,
+  });
+  const template = await prisma.ficheTemplate.upsert({
+    where: { ref: `MTC.EN:${m.numero}` },
+    update: data,
+    create: data,
+  });
+  sipaTemplateByMachine[m.machine] = template.id;
+}
+  const codesChefsEquipe = new Set([
+    "6",
+    "20",
+    "28",
+    "31",
+    "81",
+    "1010",
+    "1013",
+    "1015",
+    "1028",
+    "1029",
+    "1039",
+    "1041",
+    "1050",
+    "1089",
+    "1131",
+    "1176",
+    "2116",
+    "2245",
+    "2844",
+    "2985",
+  ]);
+
+  const templatesSipaPourMachinistes = Object.values(sipaTemplateByMachine);
 
   const employesRSMACH: { code: string; nom: string }[] = [
     { code: "6", nom: "OPOUE HONORAT" },
@@ -1006,6 +2137,7 @@ async function main() {
     { code: "1029", nom: "YAPO SEKA ARISTIDE" },
     { code: "1039", nom: "ELLOH KOUAME ALAIN" },
     { code: "1041", nom: "ZONGO ISSAKA" },
+    { code: "1050", nom: "AHOLLI AHOULOU HENRI" },
     { code: "1089", nom: "AMON AYEMOU PAUL" },
     { code: "1131", nom: "DINGUI AHOULOU VINCENT" },
     { code: "1176", nom: "KADJO ARTHUR" },
@@ -1140,38 +2272,16 @@ async function main() {
     { code: "6827", nom: "YOBOU ELYSEE" },
   ];
 
+const machinistesImportes = employesRSMACH
+  .filter((e) => !codesChefsEquipe.has(e.code))
+  .map((e) => ({
+    username: e.code,
+    name: e.nom,
+    role: Role.MACHINISTE,
+    password: "ksd22042001",
+    assignedTemplateIds: templatesSipaPourMachinistes,
+  }));
 
-  const codesChefsEquipe = new Set([
-    "6",
-    "20",
-    "28",
-    "31",
-    "81",
-    "1010",
-    "1013",
-    "1015",
-    "1028",
-    "1029",
-    "1039",
-    "1041",
-    "1089",
-    "1131",
-    "1176",
-    "2116",
-    "2245",
-    "2844",
-    "2985",
-  ]);
-
-  const machinistesImportes = employesRSMACH
-    .filter((e) => !codesChefsEquipe.has(e.code))
-    .map((e) => ({
-      username: e.code,
-      name: e.nom,
-      role: Role.MACHINISTE,
-      password: "ksd22042001",
-      assignedTemplateIds: [] as string[], 
-    }));
 
   const chefsEquipeImportes = employesRSMACH
     .filter((e) => codesChefsEquipe.has(e.code))
@@ -1180,14 +2290,31 @@ async function main() {
       name: e.nom,
       role: Role.CHEF_EQUIPE,
       password: "ksd22042001",
-      assignedTemplateIds: [] as string[], 
+      assignedTemplateIds: [] as string[],
     }));
 
 
   const templatesMaintenanciers = [
-    sidelTemplateByMachine["SOUFFLEUSE-CHILLER"], 
-    sidelTemplateByMachine["CONVOYEUR"], 
+    // Chiller SIDEL
+    sidelTemplateByMachine["SOUFFLEUSE-CHILLER"],
+
+    // Convoyeur SIDEL
+    sidelTemplateByMachine["CONVOYEUR"],
+
+    // Chiller ERTURK1
     erturk1ChillerTemplateId,
+
+    // Chiller ERTURK2 SMF1
+    erturk2ChillerSMF1TemplateId,
+
+    // Chiller ERTURK2 SMF2
+    erturk2ChillerSMF2TemplateId,
+
+    // Chiller SIPA
+    sipaTemplateByMachine["SOUFFLEUSE-CHILLER"],
+
+    // Chiller 05L
+    chiller05LTemplateId,
   ].filter((id): id is string => Boolean(id));
 
   const employesMaintenanciers: { code: string; nom: string }[] = [
@@ -1263,9 +2390,16 @@ async function main() {
     assignedTemplateIds: templatesMaintenanciers,
   }));
 
+  type SeedUser = {
+    username: string;
+    name: string;
+    role: Role;
+    password: string;
+    assignedTemplateIds?: string[];
+  };
 
-  const users = [
-    { username: "admin", name: "Administrateur", role: Role.ADMIN, password: "ksd22042001" },
+  const users: SeedUser[] = [
+    { username: "admin", name: "KONE SIE DRISSA", role: Role.ADMIN, password: "ksd22042001" },
 
     ...machinistesImportes,
 
@@ -1282,12 +2416,11 @@ async function main() {
 
   for (const u of users) {
     const passwordHash = await bcrypt.hash(u.password, 10);
-    const assignedIds = ((u as any).assignedTemplateIds as string[] | undefined) ?? [];
+    const assignedIds = u.assignedTemplateIds ?? [];
 
     await prisma.user.upsert({
       where: { username: u.username },
       update: {
-   
         name: u.name,
         role: u.role,
         passwordHash,
@@ -1307,15 +2440,27 @@ async function main() {
     });
   }
 
-  console.log("Seed terminé.");
-  console.log(
-    `Fiches créées : ${machinesSidel.length} (SIDEL) + ${machinesErturk1.length} (ERTURK1) + ${autresSystemes.length} (autres systèmes)`,
-  );
-  console.log(`Machinistes importés (accès total) : ${machinistesImportes.length}`);
-  console.log(`Chefs d'équipe importés (accès total) : ${chefsEquipeImportes.length}`);
+console.log("Seed terminé.");
+console.log(
+  `Fiches créées : ${machinesSidel.length} (SIDEL) + ${machinesErturk1.length} (ERTURK1) + ${machinesErturk2.length} (ERTURK2) + ${machinesBetaPak.length} (BETA PACK) + ${machinesSipa.length} (SIPA)`,
+);
+  console.log(`Machinistes importés : ${machinistesImportes.length}`);
+  console.log(`Chefs d'équipe importés : ${chefsEquipeImportes.length}`);
   console.log(`Maintenanciers importés (accès chiller + convoyeur) : ${maintenanciersImportes.length}`);
   console.log("Comptes créés (mot de passe: ksd22042001 à changer immédiatement) :");
   users.forEach((u) => console.log(`  - ${u.username} (${u.role}) — ${u.name}`));
+}
+
+function dedupByCode<T extends { code: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  const result: T[] = [];
+  for (const item of items) {
+    if (!seen.has(item.code)) {
+      seen.add(item.code);
+      result.push(item);
+    }
+  }
+  return result;
 }
 
 main()

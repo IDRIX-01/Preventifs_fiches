@@ -10,11 +10,6 @@ const SYSTEMES = [
   "SIPA",
   "05LITRES",
   "17LITRES",
-  "BETAPAK2",
-  "BETAPAK3",
-  "BETAPAK4",
-  "BETAPAK5",
-  "BETAPAK6",
 ];
 
 export default function NewFiche() {
