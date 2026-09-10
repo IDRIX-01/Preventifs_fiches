@@ -1,7 +1,9 @@
 {
-  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
   "/admin/templates/page": "app/admin/templates/page.js",
-  "/login/page": "app/login/page.js",
+  "/admin/archives/page": "app/admin/archives/page.js",
   "/fiches/[id]/page": "app/fiches/[id]/page.js",
-  "/dashboard/page": "app/dashboard/page.js"
+  "/admin/users/page": "app/admin/users/page.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js"
 }

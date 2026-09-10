@@ -51,6 +51,20 @@ export default function FichePage({ params }: { params: { id: string } }) {
     }
   }
 
+  async function handleModify(data: any) {
+    const res = await fetch(`/api/fiches/${params.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "modifier", ...data }),
+    });
+    if (res.ok) {
+      reload();
+    } else {
+      const err = await res.json();
+      alert(err.error);
+    }
+  }
+
   async function handleSign(signatureData: string) {
     const res = await fetch(`/api/fiches/${params.id}`, {
       method: "PATCH",
@@ -95,6 +109,7 @@ export default function FichePage({ params }: { params: { id: string } }) {
         chefEquipeOptions={chefEquipes}
         editable={editable}
         onSubmitStep={handleSubmitStep}
+        onModify={handleModify}
         onSign={handleSign}
       />
     </div>

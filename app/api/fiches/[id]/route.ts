@@ -25,6 +25,17 @@ function normalizeRoleForWorkflow(role: Role): Role {
   return role === Role.MAINTENANCIER ? Role.MACHINISTE : role;
 }
 
+/**
+ * Rôles autorisés à corriger les champs saisis par le machiniste
+ * (actionsCochees, observation, heures, etc.) tant que la fiche est à
+ * leur étape dans le workflow, sans faire avancer le statut.
+ */
+const ROLES_AVEC_DROIT_MODIFICATION: Role[] = [
+  Role.CHEF_EQUIPE,
+  Role.RESPONSABLE_PRODUCTION,
+  Role.RESPONSABLE_MAINTENANCE,
+];
+
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
@@ -133,6 +144,24 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         actionsCochees: JSON.stringify(body.actionsCochees ?? {}),
         superviseur: body.superviseur,
         status: nextStatus,
+      },
+    });
+    return NextResponse.json(updated);
+  }
+
+  // Le chef d'équipe et les responsables (production/maintenance) peuvent
+  // corriger les actions/observations tant que la fiche est à leur étape,
+  // sans faire avancer le statut (ils pourront ensuite "signer" normalement).
+  if (body.action === "modifier" && ROLES_AVEC_DROIT_MODIFICATION.includes(role)) {
+    const updated = await prisma.ficheInstance.update({
+      where: { id: params.id },
+      data: {
+        machinisteNom: body.machinisteNom,
+        dateEntretien: body.dateEntretien ? new Date(body.dateEntretien) : null,
+        heureDebut: body.heureDebut,
+        heureFin: body.heureFin,
+        observation: body.observation,
+        actionsCochees: JSON.stringify(body.actionsCochees ?? {}),
       },
     });
     return NextResponse.json(updated);

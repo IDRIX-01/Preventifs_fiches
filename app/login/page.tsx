@@ -9,12 +9,25 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const res = await signIn("credentials", { username, password, redirect: false });
+    // Lecture directe depuis le FormData plutôt que depuis le state React :
+    // ça évite les faux "champs vides" quand le navigateur (autofill)
+    // remplit les inputs sans déclencher onChange.
+    const formData = new FormData(e.currentTarget);
+    const usernameValue = (formData.get("username") as string) ?? "";
+    const passwordValue = (formData.get("password") as string) ?? "";
+
+    console.log("DEBUG →", { usernameValue, passwordValue }); // ← temporaire
+
+    const res = await signIn("credentials", {
+      username: usernameValue,
+      password: passwordValue,
+      redirect: false,
+    });
 
     if (res?.error) {
       setError("Identifiant ou mot de passe incorrect.");
@@ -38,17 +51,21 @@ export default function LoginPage() {
       >
         <h1 className="text-lg font-bold text-center">Fiches d'entretien</h1>
         <input
+          name="username"
           className="border w-full p-2 rounded"
           placeholder="Identifiant"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          autoComplete="username"
         />
         <input
+          name="password"
           className="border w-full p-2 rounded"
           placeholder="Mot de passe"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
         />
         {error && <p className="text-red-600 text-sm">{error}</p>}
         <button

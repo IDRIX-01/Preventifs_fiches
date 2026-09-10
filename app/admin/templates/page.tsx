@@ -11,12 +11,12 @@ export default async function AdminTemplates() {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold">Bibliothèque de modèles de fiches</h1>
         <div className="space-x-4 flex items-center">
-          <Link
+          {/* <Link
             href="/admin/fiches/new"
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
             + Nouvelle fiche
-          </Link>
+          </Link> */}
           <Link href="/admin/users" className="text-blue-600 hover:underline">Utilisateurs</Link>
           <Link href="/dashboard" className="text-blue-600 hover:underline">← Dashboard</Link>
         </div>

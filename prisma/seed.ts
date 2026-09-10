@@ -2122,7 +2122,6 @@ for (const m of machinesSipa) {
     "2985",
   ]);
 
-  const templatesSipaPourMachinistes = Object.values(sipaTemplateByMachine);
 
   const employesRSMACH: { code: string; nom: string }[] = [
     { code: "6", nom: "OPOUE HONORAT" },
@@ -2279,7 +2278,7 @@ const machinistesImportes = employesRSMACH
     name: e.nom,
     role: Role.MACHINISTE,
     password: "ksd22042001",
-    assignedTemplateIds: templatesSipaPourMachinistes,
+    assignedTemplateIds: [] as string[], // accès à toutes les fiches
   }));
 
 

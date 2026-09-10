@@ -11,6 +11,14 @@ const CHEF_EQUIPE_MAINTENANCE = {
   name: "BIAGNE DIPLOH ANGE MONDESIR",
 };
 
+// Rôles pouvant corriger les champs saisis par le machiniste
+// (actionsCochees, heures, observation) une fois la fiche arrivée à leur étape.
+const ROLES_AVEC_DROIT_MODIFICATION = [
+  Role.CHEF_EQUIPE,
+  Role.RESPONSABLE_PRODUCTION,
+  Role.RESPONSABLE_MAINTENANCE,
+];
+
 type Props = {
   fiche: any;
   currentUserRole: Role;
@@ -18,6 +26,7 @@ type Props = {
   chefEquipeOptions?: { username: string; name: string }[];
   editable: boolean;
   onSubmitStep?: (data: any) => void;
+  onModify?: (data: any) => void;
   onSign?: (signatureData: string) => void;
 };
 
@@ -28,6 +37,7 @@ export default function FicheView({
   chefEquipeOptions = [],
   editable,
   onSubmitStep,
+  onModify,
   onSign,
 }: Props) {
   const t = fiche.template;
@@ -36,6 +46,16 @@ export default function FicheView({
   // (voir lib/workflow.ts) : nom auto-identifié, heures éditables, etc.
   const isMachinisteStep =
     (currentUserRole === Role.MACHINISTE || isMaintenancier) && editable;
+
+  // Le chef d'équipe et les responsables peuvent corriger les actions/heures/
+  // observation tant que la fiche est à leur étape, sans repasser par
+  // "Transmettre" (nom du machiniste et destinataire restent inchangés).
+  const canModify =
+    ROLES_AVEC_DROIT_MODIFICATION.includes(currentUserRole as any) && editable;
+
+  // Contrôle si les champs (actions, heures, observation) sont éditables,
+  // que ce soit à l'étape machiniste ou lors d'une correction ultérieure.
+  const canEditFields = isMachinisteStep || canModify;
 
   const [actionsCochees, setActionsCochees] = useState(fiche.actionsCochees ?? {});
   const [dateEntretien, setDateEntretien] = useState(
@@ -65,6 +85,17 @@ export default function FicheView({
         observation,
         actionsCochees,
         superviseur: chefEquipeChoice,
+      });
+  }
+
+  function handleModifier() {
+    onModify &&
+      onModify({
+        dateEntretien,
+        heureDebut,
+        heureFin,
+        observation,
+        actionsCochees,
       });
   }
 
@@ -141,7 +172,7 @@ export default function FicheView({
             )}
           </Field>
           <Field label="Date de l'entretien">
-            {isMachinisteStep ? (
+            {canEditFields ? (
               <input
                 type="date"
                 className="border p-1 w-full"
@@ -157,7 +188,7 @@ export default function FicheView({
             )}
           </Field>
           <Field label="Heure de début">
-            {isMachinisteStep ? (
+            {canEditFields ? (
               <input
                 type="time"
                 className="border p-1 w-full"
@@ -169,7 +200,7 @@ export default function FicheView({
             )}
           </Field>
           <Field label="Heure de fin">
-            {isMachinisteStep ? (
+            {canEditFields ? (
               <input
                 type="time"
                 className="border p-1 w-full"
@@ -181,7 +212,7 @@ export default function FicheView({
             )}
           </Field>
           <Field label="Observations" full>
-            {isMachinisteStep ? (
+            {canEditFields ? (
               <textarea
                 className="border p-1 w-full"
                 rows={2}
@@ -238,7 +269,7 @@ export default function FicheView({
 
       {/* Actions à cocher */}
       <Section title="Actions">
-        {isMachinisteStep && (
+        {canEditFields && (
           <label className="flex items-center gap-2 mb-2 text-sm font-medium select-none">
             <input
               type="checkbox"
@@ -266,7 +297,7 @@ export default function FicheView({
                     <input
                       type="checkbox"
                       checked={!!actionsCochees[a.code]}
-                      disabled={!isMachinisteStep}
+                      disabled={!canEditFields}
                       onChange={(e) =>
                         setActionsCochees({ ...actionsCochees, [a.code]: e.target.checked })
                       }
@@ -283,6 +314,14 @@ export default function FicheView({
             className="mt-3 w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
             Transmettre au chef d'équipe
+          </button>
+        )}
+        {canModify && (
+          <button
+            onClick={handleModifier}
+            className="mt-3 w-full sm:w-auto bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700"
+          >
+            Enregistrer les modifications
           </button>
         )}
       </Section>
