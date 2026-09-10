@@ -8,19 +8,13 @@ export default async function AdminTemplates() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h1 className="text-lg sm:text-xl font-bold">Bibliothèque de modèles de fiches</h1>
-        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm">
-          {/* <Link
-            href="/admin/fiches/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            + Nouvelle fiche
-          </Link> */}
-          <Link href="/admin/users" className="text-blue-600 hover:underline">Utilisateurs</Link>
-          <Link href="/dashboard" className="text-blue-600 hover:underline">← Dashboard</Link>
-        </div>
-      </div>
+<div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4">
+  <h1 className="text-lg md:text-xl font-bold">Bibliothèque de modèles de fiches</h1>
+  <div className="flex flex-wrap items-center gap-3 md:gap-4 text-sm">
+    <Link href="/admin/users" className="text-blue-600 hover:underline">Utilisateurs</Link>
+    <Link href="/dashboard" className="text-blue-600 hover:underline">← Dashboard</Link>
+  </div>
+</div>
 
       <div className="overflow-x-auto rounded shadow-sm">
         <table className="w-full min-w-[480px] bg-white">
