@@ -29,10 +29,10 @@ export default async function AdminUsers({
   });
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold">Utilisateurs</h1>
-        <Link href="/admin/templates" className="text-blue-600 hover:underline">← Modèles</Link>
+    <div className="max-w-4xl mx-auto p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+        <h1 className="text-lg sm:text-xl font-bold">Utilisateurs</h1>
+        <Link href="/admin/templates" className="text-blue-600 hover:underline text-sm">← Modèles</Link>
       </div>
 
       <form className="mb-4">
@@ -41,31 +41,33 @@ export default async function AdminUsers({
           name="q"
           defaultValue={query ?? ""}
           placeholder="Rechercher par nom ou identifiant..."
-          className="w-full max-w-sm px-3 py-2 border rounded text-sm"
+          className="w-full sm:max-w-sm px-3 py-2 border rounded text-sm"
         />
       </form>
 
-      <table className="w-full bg-white rounded shadow-sm">
-        <thead className="bg-gray-200 text-left text-sm">
-          <tr>
-            <th className="p-2">Identifiant</th>
-            <th className="p-2">Nom</th>
-            <th className="p-2">Rôle</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u.id} className="border-t text-sm">
-              <td className="p-2">{u.username}</td>
-              <td className="p-2">{u.name}</td>
-              <td className="p-2">{u.role}</td>
+      <div className="overflow-x-auto rounded shadow-sm">
+        <table className="w-full min-w-[420px] bg-white">
+          <thead className="bg-gray-200 text-left text-xs sm:text-sm">
+            <tr>
+              <th className="p-2 whitespace-nowrap">Identifiant</th>
+              <th className="p-2">Nom</th>
+              <th className="p-2 whitespace-nowrap">Rôle</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id} className="border-t text-xs sm:text-sm">
+                <td className="p-2 whitespace-nowrap">{u.username}</td>
+                <td className="p-2">{u.name}</td>
+                <td className="p-2 whitespace-nowrap">{u.role}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {query && users.length === 0 && (
-        <p className="mt-4 text-sm text-gray-500">
+        <p className="mt-4 text-xs sm:text-sm text-gray-500">
           Aucun utilisateur ne correspond à « {query} ».
         </p>
       )}

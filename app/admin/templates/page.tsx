@@ -7,10 +7,10 @@ export default async function AdminTemplates() {
   const templates = await prisma.ficheTemplate.findMany({ orderBy: { createdAt: "desc" } });
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold">Bibliothèque de modèles de fiches</h1>
-        <div className="space-x-4 flex items-center">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+        <h1 className="text-lg sm:text-xl font-bold">Bibliothèque de modèles de fiches</h1>
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm">
           {/* <Link
             href="/admin/fiches/new"
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -22,28 +22,30 @@ export default async function AdminTemplates() {
         </div>
       </div>
 
-      <table className="w-full bg-white rounded shadow-sm">
-        <thead className="bg-gray-200 text-left text-sm">
-          <tr>
-            <th className="p-2">Réf</th>
-            <th className="p-2">Titre</th>
-            <th className="p-2">Version</th>
-            <th className="p-2">Actif</th>
-          </tr>
-        </thead>
-        <tbody>
-          {templates.map((t) => (
-            <tr key={t.id} className="border-t text-sm">
-              <td className="p-2">{t.ref}</td>
-              <td className="p-2">{t.titre}</td>
-              <td className="p-2">{t.version}</td>
-              <td className="p-2">{t.actif ? "Oui" : "Non"}</td>
+      <div className="overflow-x-auto rounded shadow-sm">
+        <table className="w-full min-w-[480px] bg-white">
+          <thead className="bg-gray-200 text-left text-xs sm:text-sm">
+            <tr>
+              <th className="p-2 whitespace-nowrap">Réf</th>
+              <th className="p-2">Titre</th>
+              <th className="p-2 whitespace-nowrap">Version</th>
+              <th className="p-2 whitespace-nowrap">Actif</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {templates.map((t) => (
+              <tr key={t.id} className="border-t text-xs sm:text-sm">
+                <td className="p-2 whitespace-nowrap">{t.ref}</td>
+                <td className="p-2">{t.titre}</td>
+                <td className="p-2 whitespace-nowrap">{t.version}</td>
+                <td className="p-2 whitespace-nowrap">{t.actif ? "Oui" : "Non"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      <p className="text-sm text-gray-500 mt-4">
+      <p className="text-xs sm:text-sm text-gray-500 mt-4">
         Pour ajouter un nouveau type de fiche à la bibliothèque, dupliquez le format JSON
         de <code>prisma/seed.ts</code> (EPI, consignes, actions, ressources).
       </p>
