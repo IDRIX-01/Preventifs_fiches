@@ -26,6 +26,43 @@ function normalizeRoleForWorkflow(role: Role): Role {
 }
 
 /**
+ * Compare deux noms de façon tolérante (espaces multiples, espaces en
+ * début/fin, casse, forme Unicode) — filet de sécurité pour les fiches
+ * qui n'ont pas encore de `superviseurUsername` persisté (anciennes
+ * fiches, ou avant migration complète du schéma).
+ */
+function normalizeName(name: string | null | undefined): string {
+  return (name ?? "")
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+/**
+ * Détermine si l'utilisateur connecté est bien le chef d'équipe désigné
+ * sur la fiche. Priorité à l'identifiant stable `superviseurUsername`
+ * (persisté sur la fiche) comparé au `username` de la session ; à défaut
+ * (fiche plus ancienne, ou session sans username), repli sur une
+ * comparaison de nom tolérante.
+ *
+ * C'est cette vérification — auparavant une comparaison stricte de nom —
+ * qui empêchait le chef d'équipe maintenance de modifier/signer les
+ * fiches transmises par un maintenancier dès que son nom en session ne
+ * matchait pas au caractère près le nom codé en dur côté front.
+ */
+function isDesignatedChefEquipe(fiche: { superviseur: string | null; superviseurUsername?: string | null }, sessionUser: any): boolean {
+  const ficheUsername = fiche.superviseurUsername;
+  const userUsername = sessionUser?.username as string | undefined;
+
+  if (ficheUsername && userUsername) {
+    return ficheUsername === userUsername;
+  }
+
+  return normalizeName(fiche.superviseur) === normalizeName(sessionUser?.name);
+}
+
+/**
  * Rôles autorisés à corriger les champs saisis par le machiniste
  * (actionsCochees, observation, heures, etc.) tant que la fiche est à
  * leur étape dans le workflow, sans faire avancer le statut.
@@ -124,8 +161,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
   }
 
-  // Un chef d'équipe ne peut agir que sur la fiche où il a été désigné par le machiniste
-  if (role === Role.CHEF_EQUIPE && fiche.superviseur !== userName) {
+  // Un chef d'équipe ne peut agir que sur la fiche où il a été désigné par le
+  // machiniste (ou par défaut pour le maintenancier). Comparaison par
+  // identifiant stable (superviseurUsername), avec repli sur le nom
+  // normalisé pour les fiches qui n'ont pas encore ce champ.
+  if (role === Role.CHEF_EQUIPE && !isDesignatedChefEquipe(fiche, session.user)) {
     return NextResponse.json({ error: "Cette fiche est assignée à un autre chef d'équipe" }, { status: 403 });
   }
 
@@ -143,6 +183,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         observation: body.observation,
         actionsCochees: JSON.stringify(body.actionsCochees ?? {}),
         superviseur: body.superviseur,
+        // Identifiant stable du chef d'équipe désigné — permet de ne plus
+        // dépendre d'une comparaison de nom fragile pour les droits de
+        // modification/signature (voir isDesignatedChefEquipe ci-dessus).
+        // Nécessite la colonne `superviseurUsername` sur FicheInstance
+        // (voir schema.prisma).
+        superviseurUsername: body.superviseurUsername ?? null,
         status: nextStatus,
       },
     });

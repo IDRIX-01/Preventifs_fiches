@@ -6,6 +6,37 @@ import FicheView from "@/components/FicheView";
 import { canEditStep, canPrint } from "@/lib/workflow";
 import { Role } from "@/lib/enums";
 
+// Compare deux noms de personne de façon tolérante (espaces multiples,
+// espaces en début/fin, casse, espaces insécables) pour éviter que la
+// comparaison stricte `===` échoue silencieusement à cause d'une saisie
+// ou d'un export légèrement différent entre la fiche et la session.
+//
+// NB: c'est un filet de sécurité. La vraie solution est de comparer un
+// identifiant stable (ex. `superviseurUsername` / `username`) plutôt que
+// le nom affiché — voir `matchesSuperviseur` ci-dessous.
+function normalizeName(name: string | null | undefined): string {
+  return (name ?? "")
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+// Détermine si l'utilisateur connecté est bien le chef d'équipe désigné
+// sur la fiche. Priorité à une comparaison par identifiant stable si les
+// deux côtés l'exposent (fiche.superviseurUsername / session.user.username) ;
+// sinon on retombe sur une comparaison de nom tolérante.
+function matchesSuperviseur(fiche: any, sessionUser: any): boolean {
+  const ficheUsername = fiche?.superviseurUsername;
+  const userUsername = sessionUser?.username;
+
+  if (ficheUsername && userUsername) {
+    return ficheUsername === userUsername;
+  }
+
+  return normalizeName(fiche?.superviseur) === normalizeName(sessionUser?.name);
+}
+
 export default function FichePage({ params }: { params: { id: string } }) {
   const { data: session } = useSession();
   const [fiche, setFiche] = useState<any>(null);
@@ -34,7 +65,7 @@ export default function FichePage({ params }: { params: { id: string } }) {
   let editable = canEditStep(role, fiche.status);
   // Un chef d'équipe ne peut agir que sur la fiche où il a été désigné par le machiniste
   if (editable && role === Role.CHEF_EQUIPE) {
-    editable = fiche.superviseur === userName;
+    editable = matchesSuperviseur(fiche, session.user);
   }
 
   async function handleSubmitStep(data: any) {

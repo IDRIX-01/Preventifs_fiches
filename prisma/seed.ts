@@ -4,7 +4,7 @@ import { serializeTemplateFields } from "../lib/json-fields";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
-
+const allTemplateIds: string[] = [];
 async function main() {
 
   const epiCommun = [

@@ -81,9 +81,16 @@ export default function FicheView({
   const [heureFin, setHeureFin] = useState(fiche.heureFin ?? "");
   const [observation, setObservation] = useState(fiche.observation ?? "");
   // Pour un maintenancier, le chef d'équipe destinataire est fixe et
-  // pré-rempli : aucun choix à faire.
-  const [chefEquipeChoice, setChefEquipeChoice] = useState(
-    isMaintenancier ? CHEF_EQUIPE_MAINTENANCE.name : ""
+  // pré-rempli : aucun choix à faire. On garde le NOM (affichage) et le
+  // USERNAME (clé stable utilisée pour vérifier les droits côté page) en
+  // synchronisation via un seul objet, pour ne jamais les désolidariser.
+  const [chefEquipeChoice, setChefEquipeChoice] = useState<{
+    username: string;
+    name: string;
+  } | null>(
+    isMaintenancier
+      ? { username: CHEF_EQUIPE_MAINTENANCE.username, name: CHEF_EQUIPE_MAINTENANCE.name }
+      : null
   );
   const [signingRole, setSigningRole] = useState<Role | null>(null);
 
@@ -100,7 +107,13 @@ export default function FicheView({
         heureFin,
         observation,
         actionsCochees,
-        superviseur: chefEquipeChoice,
+        superviseur: chefEquipeChoice.name,
+        // Identifiant stable utilisé pour les contrôles d'accès côté page —
+        // évite de dépendre d'une comparaison de nom fragile (accents,
+        // casse, nom modifié après coup), qui est ce qui empêchait le
+        // chef d'équipe maintenance de modifier les fiches des
+        // maintenanciers.
+        superviseurUsername: chefEquipeChoice.username,
       });
   }
 
@@ -172,12 +185,17 @@ export default function FicheView({
               ) : (
                 <select
                   className="border p-1 w-full"
-                  value={chefEquipeChoice}
-                  onChange={(e) => setChefEquipeChoice(e.target.value)}
+                  value={chefEquipeChoice?.username ?? ""}
+                  onChange={(e) => {
+                    const selected = chefEquipeOptions.find(
+                      (c) => c.username === e.target.value
+                    );
+                    setChefEquipeChoice(selected ?? null);
+                  }}
                 >
                   <option value="">— Choisir —</option>
                   {chefEquipeOptions.map((c) => (
-                    <option key={c.username} value={c.name}>
+                    <option key={c.username} value={c.username}>
                       {c.name}
                     </option>
                   ))}
