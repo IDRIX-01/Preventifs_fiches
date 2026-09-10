@@ -11,13 +11,29 @@ const CHEF_EQUIPE_MAINTENANCE = {
   name: "BIAGNE DIPLOH ANGE MONDESIR",
 };
 
-// Rôles pouvant corriger les champs saisis par le machiniste
+// Rôle(s) pouvant corriger les champs saisis par le machiniste
 // (actionsCochees, heures, observation) une fois la fiche arrivée à leur étape.
-const ROLES_AVEC_DROIT_MODIFICATION = [
-  Role.CHEF_EQUIPE,
-  Role.RESPONSABLE_PRODUCTION,
-  Role.RESPONSABLE_MAINTENANCE,
-];
+// Seul le chef d'équipe a ce droit.
+const ROLES_AVEC_DROIT_MODIFICATION = [Role.CHEF_EQUIPE];
+
+// Signature du Directeur Technique restreinte selon l'équipement (UAP1 uniquement).
+// Pour tout équipement non listé ici, n'importe quel directeur connecté peut signer
+// (comportement inchangé).
+const DIRECTEURS_AUTORISES_PAR_EQUIPEMENT: Record<string, string[]> = {
+  SIPA: ["RAMZI", "WALID"],
+  BTP: ["RAMZI", "WALID"],
+  "05L": ["RAMZI", "WALID"],
+  "17L": ["RAMZI", "WALID"],
+  ERTURK1: ["MEHER", "HAMED"],
+  ERTURK2: ["MEHER", "HAMED"],
+  SIDEL: ["MEHER", "HAMED"],
+};
+
+function directeurAutorise(equipement: string, userName: string) {
+  const liste = DIRECTEURS_AUTORISES_PAR_EQUIPEMENT[equipement?.toUpperCase()];
+  if (!liste) return true; // équipement hors UAP1 → pas de restriction
+  return liste.some((nom) => userName?.toUpperCase().includes(nom));
+}
 
 type Props = {
   fiche: any;
@@ -47,9 +63,9 @@ export default function FicheView({
   const isMachinisteStep =
     (currentUserRole === Role.MACHINISTE || isMaintenancier) && editable;
 
-  // Le chef d'équipe et les responsables peuvent corriger les actions/heures/
-  // observation tant que la fiche est à leur étape, sans repasser par
-  // "Transmettre" (nom du machiniste et destinataire restent inchangés).
+  // Le chef d'équipe peut corriger les actions/heures/observation tant que
+  // la fiche est à son étape, sans repasser par "Transmettre" (nom du
+  // machiniste et destinataire restent inchangés).
   const canModify =
     ROLES_AVEC_DROIT_MODIFICATION.includes(currentUserRole as any) && editable;
 
@@ -335,6 +351,7 @@ export default function FicheView({
             signatures={fiche.signatures}
             role={Role.CHEF_EQUIPE}
             currentUserRole={currentUserRole}
+            currentUserName={currentUserName}
             editable={editable}
             onOpenSign={() => setSigningRole(Role.CHEF_EQUIPE)}
           />
@@ -343,6 +360,7 @@ export default function FicheView({
             signatures={fiche.signatures}
             role={Role.RESPONSABLE_PRODUCTION}
             currentUserRole={currentUserRole}
+            currentUserName={currentUserName}
             editable={editable}
             onOpenSign={() => setSigningRole(Role.RESPONSABLE_PRODUCTION)}
           />
@@ -351,6 +369,7 @@ export default function FicheView({
             signatures={fiche.signatures}
             role={Role.RESPONSABLE_MAINTENANCE}
             currentUserRole={currentUserRole}
+            currentUserName={currentUserName}
             editable={editable}
             onOpenSign={() => setSigningRole(Role.RESPONSABLE_MAINTENANCE)}
           />
@@ -359,6 +378,8 @@ export default function FicheView({
             signatures={fiche.signatures}
             role={Role.DIRECTEUR_TECHNIQUE}
             currentUserRole={currentUserRole}
+            currentUserName={currentUserName}
+            equipement={t.systeme}
             editable={editable}
             onOpenSign={() => setSigningRole(Role.DIRECTEUR_TECHNIQUE)}
           />
@@ -410,6 +431,8 @@ function SignatureCell({
   signatures,
   role,
   currentUserRole,
+  currentUserName,
+  equipement,
   editable,
   onOpenSign,
 }: {
@@ -418,11 +441,22 @@ function SignatureCell({
   signatures: any[];
   role: Role;
   currentUserRole: Role;
+  currentUserName?: string;
+  equipement?: string;
   editable: boolean;
   onOpenSign: () => void;
 }) {
   const sig = signatures?.find((s) => s.role === role);
-  const canSign = editable && currentUserRole === role && !sig;
+
+  // Pour le Directeur Technique, la signature est en plus restreinte selon
+  // l'équipement de la fiche (voir DIRECTEURS_AUTORISES_PAR_EQUIPEMENT).
+  // Pour les autres rôles, aucune restriction supplémentaire.
+  const autorisePourCetEquipement =
+    role !== Role.DIRECTEUR_TECHNIQUE ||
+    directeurAutorise(equipement ?? "", currentUserName ?? "");
+
+  const canSign =
+    editable && currentUserRole === role && !sig && autorisePourCetEquipement;
 
   return (
     <div className="border p-2 min-h-28 flex flex-col justify-between">
@@ -446,6 +480,13 @@ function SignatureCell({
         >
           Signer et transmettre
         </button>
+      ) : editable &&
+        currentUserRole === role &&
+        !sig &&
+        !autorisePourCetEquipement ? (
+        <div className="text-xs text-red-500 mt-1">
+          Non autorisé pour cet équipement
+        </div>
       ) : (
         <div className="text-xs text-gray-400 mt-1">En attente</div>
       )}

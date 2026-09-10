@@ -2410,8 +2410,10 @@ const machinistesImportes = employesRSMACH
     { username: "76", name: "BOUSSOU HENOCK", role: Role.RESPONSABLE_MAINTENANCE, password: "ksd22042001" },
 
     { username: "6488", name: "BIAGNE DIPLOH ANGE MONDESIR", role: Role.CHEF_EQUIPE, password: "ksd22042001" },
-    { username: "directeur", name: "Directeur Technique", role: Role.DIRECTEUR_TECHNIQUE, password: "ksd22042001" },
-  ];
+    { username: "ramzi", name: "RAMZI", role: Role.DIRECTEUR_TECHNIQUE, password: "ksd22042001" },
+    { username: "walid", name: "WALID", role: Role.DIRECTEUR_TECHNIQUE, password: "ksd22042001" },
+    { username: "meher", name: "MEHER", role: Role.DIRECTEUR_TECHNIQUE, password: "ksd22042001" },
+    { username: "hamed", name: "HAMED", role: Role.DIRECTEUR_TECHNIQUE, password: "ksd22042001" },  ];
 
   for (const u of users) {
     const passwordHash = await bcrypt.hash(u.password, 10);

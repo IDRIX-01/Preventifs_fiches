@@ -36,8 +36,6 @@ export default async function ArchivesPage({
   const systeme = str(searchParams.systeme).trim();
   const date = str(searchParams.date).trim();
 
-  const hasSearched = Object.values(searchParams).some((v) => str(v) !== "");
-
   const systemesDisponibles = await prisma.ficheTemplate.findMany({
     select: { systeme: true },
     distinct: ["systeme"],
@@ -56,14 +54,14 @@ export default async function ArchivesPage({
     where.datePrevue = { gte: start, lt: end };
   }
 
-  const results = hasSearched
-    ? await prisma.ficheInstance.findMany({
-        where,
-        include: { template: true },
-        orderBy: { datePrevue: "desc" },
-        take: 200,
-      })
-    : [];
+  // On affiche toutes les fiches archivées par défaut (sans critère),
+  // et on filtre dynamiquement si l'utilisateur renseigne Ligne et/ou Date.
+  const results = await prisma.ficheInstance.findMany({
+    where,
+    include: { template: true },
+    orderBy: { datePrevue: "desc" },
+    take: 200,
+  });
 
   return (
     // px-4 sur mobile, plus large sur desktop ; padding vertical réduit sur mobile
@@ -115,19 +113,13 @@ export default async function ArchivesPage({
         </div>
       </form>
 
-      {!hasSearched && (
-        <div className="bg-white rounded shadow-sm p-6 text-center text-gray-400">
-          Renseigne au moins un critère puis clique sur "Rechercher".
-        </div>
-      )}
-
-      {hasSearched && results.length === 0 && (
+      {results.length === 0 && (
         <div className="bg-white rounded shadow-sm p-6 text-center text-gray-400">
           Aucune fiche archivée ne correspond à ces critères.
         </div>
       )}
 
-      {hasSearched && results.length > 0 && (
+      {results.length > 0 && (
         <>
           {/* MOBILE (< sm) : cartes empilées au lieu d'un tableau illisible */}
           <div className="sm:hidden space-y-3">
@@ -195,7 +187,7 @@ export default async function ArchivesPage({
         </>
       )}
 
-      {hasSearched && results.length === 200 && (
+      {results.length === 200 && (
         <p className="text-xs text-gray-400 mt-2">
           Affichage limité aux 200 premiers résultats — affine ta recherche pour voir moins de fiches.
         </p>
