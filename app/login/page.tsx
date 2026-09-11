@@ -28,7 +28,7 @@ export default function LoginPage() {
       if (result?.error) {
         setError(
           result.error === "Compte désactivé"
-            ? "Votre compte a été désactivé. Contactez l'administrateur."
+            ? "Votre compte a été désactivé. Contactez l'administrateur ___Service Informatique"
             : "Identifiant ou mot de passe incorrect."
         );
         setLoading(false);
