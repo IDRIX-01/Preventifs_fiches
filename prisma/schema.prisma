@@ -43,30 +43,30 @@ model FicheTemplate {
 }
 
 model FicheInstance {
-  id             String           @id @default(cuid())
-  templateId     String
-  numeroOT       String           @unique
-  zone           String
-  centreCharge   String
-  superviseur    String
-  datePrevue     DateTime
-  dateFinPrevue  DateTime
-  status         String           @default("BROUILLON")
-  machinisteNom  String?
-  dateEntretien  DateTime?
-  actionsCochees String?
-  heureDebut     String?
-  heureFin       String?
-  observation    String?
-  chefEquipeNom  String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  template       FicheTemplate    @relation(fields: [templateId], references: [id])
-  signatures     FicheSignature[]
+  id                  String           @id @default(cuid())
+  templateId          String
+  numeroOT            String           @unique
+  zone                String
+  centreCharge        String
+  superviseur         String
+  superviseurUsername String?          // <-- nouvelle colonne
+  datePrevue          DateTime
+  dateFinPrevue       DateTime
+  status              String           @default("BROUILLON")
+  machinisteNom       String?
+  dateEntretien       DateTime?
+  actionsCochees      String?
+  heureDebut          String?
+  heureFin            String?
+  observation         String?
+  chefEquipeNom       String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  template            FicheTemplate    @relation(fields: [templateId], references: [id])
+  signatures          FicheSignature[]
 
   @@map("fiche_instances")
 }
-
 model FicheSignature {
   id            String        @id @default(cuid())
   ficheId       String
