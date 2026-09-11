@@ -14,37 +14,36 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    // Lecture directe depuis le FormData plutôt que depuis le state React :
-    // ça évite les faux "champs vides" quand le navigateur (autofill)
-    // remplit les inputs sans déclencher onChange.
     const formData = new FormData(e.currentTarget);
     const usernameValue = (formData.get("username") as string) ?? "";
     const passwordValue = (formData.get("password") as string) ?? "";
 
-    console.log("DEBUG →", { usernameValue, passwordValue }); // ← temporaire
+    try {
+      const result = await signIn("credentials", {
+        username: usernameValue,
+        password: passwordValue,
+        redirect: false,
+      });
 
-    const res = await signIn("credentials", {
-      username: usernameValue,
-      password: passwordValue,
-      redirect: false,
-    });
+      if (result?.error) {
+        setError(
+          result.error === "Compte désactivé"
+            ? "Votre compte a été désactivé. Contactez l'administrateur."
+            : "Identifiant ou mot de passe incorrect."
+        );
+        setLoading(false);
+        return;
+      }
 
-    if (res?.error) {
-      setError("Identifiant ou mot de passe incorrect.");
+      window.location.href = "/dashboard";
+    } catch {
+      setError("Une erreur est survenue. Réessayez.");
       setLoading(false);
-      return;
     }
-
-    // Rechargement complet (pas router.push) pour éviter que Next.js
-    // affiche une page mise en cache avec l'ancienne session
-    window.location.href = "/dashboard";
   }
 
   return (
-    // px-4 pour éviter que le formulaire touche les bords sur petit écran
     <div className="min-h-screen flex items-center justify-center px-4">
-      {/* w-80 fixe -> w-full avec max-w-sm : prend toute la largeur dispo
-          jusqu'à un plafond raisonnable sur desktop */}
       <form
         onSubmit={handleSubmit}
         className="bg-white p-6 sm:p-8 rounded-lg shadow-md w-full max-w-sm space-y-4"
