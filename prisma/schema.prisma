@@ -13,6 +13,7 @@ model User {
   username          String           @unique
   passwordHash      String
   role              String
+  actif     Boolean  @default(true)   
   createdAt         DateTime         @default(now())
   signatures        FicheSignature[]
   assignedTemplates FicheTemplate[]  @relation("FicheTemplateToUser")

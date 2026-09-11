@@ -33,7 +33,8 @@ export default async function ArchivesPage({
   if (role !== Role.ADMIN) redirect("/dashboard");
 
   const systeme = str(searchParams.systeme).trim();
-  const date = str(searchParams.date).trim();
+  const dateDebut = str(searchParams.dateDebut).trim();
+  const dateFin = str(searchParams.dateFin).trim();
 
   const systemesDisponibles = await prisma.ficheTemplate.findMany({
     select: { systeme: true },
@@ -42,19 +43,34 @@ export default async function ArchivesPage({
   });
 
   // La recherche dans /admin/archives ne doit remonter que les fiches
-  // archivées, quels que soient les autres critères saisis (ligne, date).
+  // archivées, quels que soient les autres critères saisis (ligne, dates).
   const where: Prisma.FicheInstanceWhereInput = { status: "ARCHIVE" };
 
   if (systeme) where.template = { systeme };
-  if (date) {
-    const start = new Date(date);
-    const end = new Date(date);
-    end.setDate(end.getDate() + 1);
-    where.datePrevue = { gte: start, lt: end };
+
+  // Filtre par plage de dates sur `datePrevue`. Les deux bornes sont
+  // optionnelles et indépendantes : on peut ne renseigner que "Du", que
+  // "Au", ou les deux.
+  if (dateDebut || dateFin) {
+    const datePrevueFilter: Prisma.DateTimeFilter = {};
+
+    if (dateDebut) {
+      datePrevueFilter.gte = new Date(dateDebut);
+    }
+
+    if (dateFin) {
+      // On inclut toute la journée de fin (jusqu'à 23:59:59.999) en
+      // comparant à minuit du jour suivant avec un `lt`.
+      const finInclusive = new Date(dateFin);
+      finInclusive.setDate(finInclusive.getDate() + 1);
+      datePrevueFilter.lt = finInclusive;
+    }
+
+    where.datePrevue = datePrevueFilter;
   }
 
   // On affiche toutes les fiches archivées par défaut (sans critère),
-  // et on filtre dynamiquement si l'utilisateur renseigne Ligne et/ou Date.
+  // et on filtre dynamiquement si l'utilisateur renseigne Ligne et/ou Dates.
   const results = await prisma.ficheInstance.findMany({
     where,
     include: { template: true },
@@ -73,10 +89,10 @@ export default async function ArchivesPage({
         </Link>
       </div>
 
-      {/* 1 colonne sur mobile, 3 colonnes à partir de md */}
+      {/* 1 colonne sur mobile, 4 colonnes à partir de md (ligne + 2 dates + boutons) */}
       <form
         method="get"
-        className="bg-white rounded shadow-sm p-4 sm:p-6 mb-6 grid grid-cols-1 md:grid-cols-3 gap-4"
+        className="bg-white rounded shadow-sm p-4 sm:p-6 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4"
       >
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-1">Ligne</label>
@@ -91,8 +107,23 @@ export default async function ArchivesPage({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">Date prévue</label>
-          <input type="date" name="date" defaultValue={date} className="w-full border rounded p-2" />
+          <label className="block text-sm font-medium text-gray-600 mb-1">Du</label>
+          <input
+            type="date"
+            name="dateDebut"
+            defaultValue={dateDebut}
+            className="w-full border rounded p-2"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-600 mb-1">Au</label>
+          <input
+            type="date"
+            name="dateFin"
+            defaultValue={dateFin}
+            className="w-full border rounded p-2"
+          />
         </div>
 
         {/* Boutons pleine largeur et empilés sur mobile, en ligne à partir de sm */}
@@ -174,8 +205,8 @@ export default async function ArchivesPage({
                       <td className="p-2">{statusLabel}</td>
                       <td className="p-2">
                         <Link href={`/fiches/${f.id}`} className="text-blue-600 hover:underline">
-                          Ouvrir
-                        </Link>
+                        Ouvrir
+                       </Link>
                       </td>
                     </tr>
                   );
