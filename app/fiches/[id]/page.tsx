@@ -44,8 +44,9 @@ export default function FichePage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
 
   async function reload() {
-    const data = await fetch(`/api/fiches/${params.id}`).then((r) => r.json());
-    setFiche(data);
+    const res = await fetch(`/api/fiches/${params.id}`);
+    const data = await res.json();
+    setFiche({ ...data, _status: res.status });
     setLoading(false);
   }
 
@@ -57,7 +58,18 @@ export default function FichePage({ params }: { params: { id: string } }) {
   }, [params.id]);
 
   if (loading || !session) return <div className="p-6">Chargement…</div>;
-  if (!fiche || fiche.error) return <div className="p-6">Fiche introuvable.</div>;
+  if (!fiche || fiche.error) {
+    // On distingue l'accès refusé (403 — fiche existante mais non assignée
+    // à l'utilisateur, ex. machiniste sur une fiche chiller/convoyeur) de
+    // la fiche réellement inexistante (404), pour éviter d'afficher un
+    // message trompeur qui laisserait croire à un bug plutôt qu'à une
+    // restriction d'accès normale.
+    const message =
+      fiche?._status === 403
+        ? fiche.error || "Vous n'avez pas accès à cette fiche."
+        : "Fiche introuvable.";
+    return <div className="p-6">{message}</div>;
+  }
 
   const role = (session.user as any).role as Role;
   const userName = session.user?.name as string;

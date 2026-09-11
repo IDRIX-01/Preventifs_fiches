@@ -73,6 +73,30 @@ const ROLES_AVEC_DROIT_MODIFICATION: Role[] = [
   Role.RESPONSABLE_MAINTENANCE,
 ];
 
+/**
+ * Un template est considéré réservé aux maintenanciers (chillers,
+ * convoyeurs...) s'il est assigné à au moins un utilisateur MAINTENANCIER
+ * (voir prisma/seed.ts : templatesMaintenanciers). On s'appuie directement
+ * sur cette relation existante plutôt que sur un pattern de nom
+ * (equipement contenant "CHIL"/"CONV"), qui serait fragile et pourrait se
+ * désynchroniser silencieusement du seed — même type de bug que la
+ * comparaison de nom du superviseur corrigée plus haut.
+ *
+ * Un machiniste ayant `assignedTemplates` vide a normalement accès à
+ * "toutes les fiches" (voir seed), mais ce "toutes" ne doit jamais inclure
+ * les fiches réservées maintenance : cette fonction comble ce trou.
+ */
+async function isReservedForMaintenancier(templateId: string): Promise<boolean> {
+  const maintenancierAvecAcces = await prisma.user.findFirst({
+    where: {
+      role: Role.MAINTENANCIER,
+      assignedTemplates: { some: { id: templateId } },
+    },
+    select: { id: true },
+  });
+  return !!maintenancierAvecAcces;
+}
+
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
@@ -100,6 +124,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (hasRestriction && !isAssigned) {
       return NextResponse.json({ error: "Cette fiche ne vous est pas assignée" }, { status: 403 });
     }
+  }
+
+  // Les fiches chillers/convoyeurs sont exclusivement réservées aux
+  // maintenanciers, quelle que soit la liste `assignedTemplates` du
+  // machiniste (même vide, ce qui signifie normalement "accès à toutes
+  // les fiches" — mais pas à celles-ci).
+  if (role === Role.MACHINISTE && (await isReservedForMaintenancier(fiche.templateId))) {
+    return NextResponse.json({ error: "Cette fiche ne vous est pas assignée" }, { status: 403 });
   }
 
   // Nom de la personne responsable de l'étape en cours (affiché dans "Statut actuel")
@@ -159,6 +191,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (hasRestriction && !isAssigned) {
       return NextResponse.json({ error: "Cette fiche ne vous est pas assignée" }, { status: 403 });
     }
+  }
+
+  // Les fiches chillers/convoyeurs sont exclusivement réservées aux
+  // maintenanciers — un machiniste ne peut pas les transmettre, même si sa
+  // propre liste `assignedTemplates` est vide (voir isReservedForMaintenancier).
+  if (role === Role.MACHINISTE && (await isReservedForMaintenancier(fiche.templateId))) {
+    return NextResponse.json({ error: "Cette fiche ne vous est pas assignée" }, { status: 403 });
   }
 
   // Un chef d'équipe ne peut agir que sur la fiche où il a été désigné par le
