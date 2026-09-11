@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
-  // @ts-expect-error — adapte si le rôle est typé différemment dans ta session
   if (!session || session.user.role !== "ADMIN") return null;
   return session;
 }
@@ -42,7 +41,6 @@ export async function DELETE(
 
   const { id } = await params;
 
-  // @ts-expect-error — adapte si le rôle est typé différemment dans ta session
   if (session.user.id === id) {
     return NextResponse.json(
       { error: "Impossible de supprimer votre propre compte" },
