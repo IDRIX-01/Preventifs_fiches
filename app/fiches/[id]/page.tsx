@@ -68,7 +68,16 @@ export default function FichePage({ params }: { params: { id: string } }) {
       fiche?._status === 403
         ? fiche.error || "Vous n'avez pas accès à cette fiche."
         : "Fiche introuvable.";
-    return <div className="p-6">{message}</div>;
+    return (
+      <div className="p-6">
+        <div className="max-w-4xl mx-auto mb-4 no-print">
+          <a href="/dashboard" className="text-blue-600 hover:underline">
+            ← Retour
+          </a>
+        </div>
+        <div className="max-w-4xl mx-auto">{message}</div>
+      </div>
+    );
   }
 
   const role = (session.user as any).role as Role;
