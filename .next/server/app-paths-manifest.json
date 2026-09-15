@@ -1,7 +1,21 @@
 {
-  "/change-password/page": "app/change-password/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/templates/page": "app/admin/templates/page.js",
+  "/admin/users/page": "app/admin/users/page.js",
+  "/api/admin/users/route": "app/api/admin/users/route.js",
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
-  "/dashboard/page": "app/dashboard/page.js",
+  "/api/fiches/[id]/route": "app/api/fiches/[id]/route.js",
+  "/admin/fiches/new/page": "app/admin/fiches/new/page.js",
+  "/api/admin/users/[id]/route": "app/api/admin/users/[id]/route.js",
+  "/admin/archives/page": "app/admin/archives/page.js",
+  "/api/fiches/[id]/print/route": "app/api/fiches/[id]/print/route.js",
+  "/api/fiches/route": "app/api/fiches/route.js",
   "/api/user/change-password/route": "app/api/user/change-password/route.js",
-  "/login/page": "app/login/page.js"
+  "/api/cron/generate-fiches/route": "app/api/cron/generate-fiches/route.js",
+  "/fiches/[id]/page": "app/fiches/[id]/page.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js",
+  "/change-password/page": "app/change-password/page.js",
+  "/api/templates/route": "app/api/templates/route.js",
+  "/dashboard/page": "app/dashboard/page.js"
 }

@@ -23,6 +23,15 @@ export default async function AdminUsers({
   const users = await prisma.user.findMany({
     where,
     orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      createdAt: true,
+      name: true,
+      username: true,
+      passwordHash: true,
+      role: true,
+      actif: true,
+    },
   });
 
   return (

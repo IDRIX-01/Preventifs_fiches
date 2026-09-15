@@ -52,7 +52,7 @@ export default function FichePage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     reload();
-    fetch("/api/users?role=CHEF_EQUIPE")
+    fetch("/api/admin/users?role=CHEF_EQUIPE")
       .then((r) => r.json())
       .then(setChefEquipes);
   }, [params.id]);
