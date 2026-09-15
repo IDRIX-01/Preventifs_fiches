@@ -2,12 +2,15 @@
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
+import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -57,15 +60,28 @@ export default function LoginPage() {
           onChange={(e) => setUsername(e.target.value)}
           autoComplete="username"
         />
-        <input
-          name="password"
-          className="border w-full p-2 rounded"
-          placeholder="Mot de passe"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-        />
+
+        <div className="relative">
+          <input
+            name="password"
+            className="border w-full p-2 pr-10 rounded"
+            placeholder="Mot de passe"
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            tabIndex={-1}
+            aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
+
         {error && <p className="text-red-600 text-sm">{error}</p>}
         <button
           disabled={loading}
@@ -73,6 +89,11 @@ export default function LoginPage() {
         >
           {loading ? "Connexion…" : "Se connecter"}
         </button>
+        <p className="text-center text-sm text-gray-500">
+          <Link href="/change-password" className="text-blue-600 hover:underline">
+            Modifier mon mot de passe
+          </Link>
+        </p>
       </form>
     </div>
   );

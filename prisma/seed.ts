@@ -2271,28 +2271,6 @@ for (const m of machinesSipa) {
     { code: "6827", nom: "YOBOU ELYSEE" },
   ];
 
-const machinistesImportes = employesRSMACH
-  .filter((e) => !codesChefsEquipe.has(e.code))
-  .map((e) => ({
-    username: e.code,
-    name: e.nom,
-    role: Role.MACHINISTE,
-    password: "ksd22042001",
-    assignedTemplateIds: [] as string[], // accès à toutes les fiches
-  }));
-
-
-  const chefsEquipeImportes = employesRSMACH
-    .filter((e) => codesChefsEquipe.has(e.code))
-    .map((e) => ({
-      username: e.code,
-      name: e.nom,
-      role: Role.CHEF_EQUIPE,
-      password: "ksd22042001",
-      assignedTemplateIds: [] as string[],
-    }));
-
-
   const templatesMaintenanciers = [
     // Chiller SIDEL
     sidelTemplateByMachine["SOUFFLEUSE-CHILLER"],
@@ -2389,16 +2367,35 @@ const machinistesImportes = employesRSMACH
     assignedTemplateIds: templatesMaintenanciers,
   }));
 
-  type SeedUser = {
+    type SeedUser = {
     username: string;
     name: string;
     role: Role;
-    password: string;
     assignedTemplateIds?: string[];
   };
 
+  const machinistesImportes = employesRSMACH
+    .filter((e) => !codesChefsEquipe.has(e.code))
+    .map((e) => ({
+      username: e.code,
+      name: e.nom,
+      role: Role.MACHINISTE,
+      assignedTemplateIds: [] as string[], // accès à toutes les fiches
+    }));
+
+  const chefsEquipeImportes = employesRSMACH
+    .filter((e) => codesChefsEquipe.has(e.code))
+    .map((e) => ({
+      username: e.code,
+      name: e.nom,
+      role: Role.CHEF_EQUIPE,
+      assignedTemplateIds: [] as string[],
+    }));
+
+  // maintenanciersImportes already declared above (with password). Do not redeclare.
+
   const users: SeedUser[] = [
-    { username: "admin", name: "KONE SIE DRISSA", role: Role.ADMIN, password: "ksd22042001" },
+    { username: "admin", name: "KONE SIE DRISSA", role: Role.ADMIN },
 
     ...machinistesImportes,
 
@@ -2406,17 +2403,18 @@ const machinistesImportes = employesRSMACH
 
     ...maintenanciersImportes,
 
-    { username: "2", name: "OUSMANE BOUKARY", role: Role.RESPONSABLE_PRODUCTION, password: "ksd22042001" },
-    { username: "76", name: "BOUSSOU HENOCK", role: Role.RESPONSABLE_MAINTENANCE, password: "ksd22042001" },
+    { username: "2", name: "OUSMANE BOUKARY", role: Role.RESPONSABLE_PRODUCTION },
+    { username: "76", name: "BOUSSOU HENOCK", role: Role.RESPONSABLE_MAINTENANCE },
 
-    { username: "6488", name: "BIAGNE DIPLOH ANGE MONDESIR", role: Role.CHEF_EQUIPE, password: "ksd22042001" },
-    { username: "ramzi", name: "RAMZI", role: Role.DIRECTEUR_TECHNIQUE, password: "ksd22042001" },
-    { username: "walid", name: "WALID", role: Role.DIRECTEUR_TECHNIQUE, password: "ksd22042001" },
-    { username: "meher", name: "MEHER", role: Role.DIRECTEUR_TECHNIQUE, password: "ksd22042001" },
-    { username: "hamed", name: "HAMED", role: Role.DIRECTEUR_TECHNIQUE, password: "ksd22042001" },  ];
+    { username: "6488", name: "BIAGNE DIPLOH ANGE MONDESIR", role: Role.CHEF_EQUIPE },
+    { username: "ramzi", name: "RAMZI", role: Role.DIRECTEUR_TECHNIQUE },
+    { username: "walid", name: "WALID", role: Role.DIRECTEUR_TECHNIQUE },
+    { username: "meher", name: "MEHER", role: Role.DIRECTEUR_TECHNIQUE },
+    { username: "hamed", name: "HAMED", role: Role.DIRECTEUR_TECHNIQUE },
+  ];
 
   for (const u of users) {
-    const passwordHash = await bcrypt.hash(u.password, 10);
+    const passwordHash = await bcrypt.hash(u.username, 10);
     const assignedIds = u.assignedTemplateIds ?? [];
 
     await prisma.user.upsert({
@@ -2441,14 +2439,14 @@ const machinistesImportes = employesRSMACH
     });
   }
 
-console.log("Seed terminé.");
-console.log(
-  `Fiches créées : ${machinesSidel.length} (SIDEL) + ${machinesErturk1.length} (ERTURK1) + ${machinesErturk2.length} (ERTURK2) + ${machinesBetaPak.length} (BETA PACK) + ${machinesSipa.length} (SIPA)`,
-);
+  console.log("Seed terminé.");
+  console.log(
+    `Fiches créées : ${machinesSidel.length} (SIDEL) + ${machinesErturk1.length} (ERTURK1) + ${machinesErturk2.length} (ERTURK2) + ${machinesBetaPak.length} (BETA PACK) + ${machinesSipa.length} (SIPA)`,
+  );
   console.log(`Machinistes importés : ${machinistesImportes.length}`);
   console.log(`Chefs d'équipe importés : ${chefsEquipeImportes.length}`);
   console.log(`Maintenanciers importés (accès chiller + convoyeur) : ${maintenanciersImportes.length}`);
-  console.log("Comptes créés (mot de passe: ksd22042001 à changer immédiatement) :");
+  console.log("Comptes créés (mot de passe initial = identifiant, à changer immédiatement) :");
   users.forEach((u) => console.log(`  - ${u.username} (${u.role}) — ${u.name}`));
 }
 

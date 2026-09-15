@@ -1,9 +1,7 @@
 {
-  "/page": "app/page.js",
+  "/change-password/page": "app/change-password/page.js",
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
-  "/login/page": "app/login/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/fiches/[id]/page": "app/fiches/[id]/page.js",
-  "/api/users/route": "app/api/users/route.js",
-  "/api/fiches/[id]/route": "app/api/fiches/[id]/route.js"
+  "/api/user/change-password/route": "app/api/user/change-password/route.js",
+  "/login/page": "app/login/page.js"
 }
