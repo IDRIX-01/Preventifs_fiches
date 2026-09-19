@@ -677,11 +677,12 @@ async function main() {
       epiOverride: [],
       consignesAOverride: [],
       consignesNeOverride: [],
-      // TODO: données actions/ressources non fournies dans la fiche source (contrairement aux
-      // chillers SDL-SOUF-CHIL / ERT2-SOUF1-CHIL / ERT2-SOUF2-CHIL qui ont bien 3-6 actions).
-      // À compléter avec la fiche réelle plutôt que de laisser un template vide.
-      actionsOverride: [],
-      ressourcesOverride: [],
+    actionsOverride: [
+    { code: "ACT-00634", libelle: "CONTROLER LE NIVEAU D'EAU ( REMPLIR SI NIVEAU FAIBLE )" },
+    { code: "ACT-00635", libelle: "CONTROLER L'ETAT ET LE SERRAGE DES FLEXIBLES CONNECTES AU CHILLER" },
+    { code: "ACT-00636", libelle: "CONTROLER LA PROPRETE DES PANNEAUX FILTRANTS" },
+  ], 
+   ressourcesOverride: [],
     },
     {
       numero: "170",
