@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/cron/generate-fiches", "schedule": "0 10 * * 1" }
+  ]
+}

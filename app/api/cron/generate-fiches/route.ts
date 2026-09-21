@@ -1,12 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { generateWeeklyFiches } from "@/lib/generateFiches";
 
-export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
-  const created = await generateWeeklyFiches();
-  return NextResponse.json({ ok: true, created });
+export async function GET(req: Request) {
+  if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  try {
+    await generateWeeklyFiches();
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("[cron] Échec génération des fiches", e);
+    return NextResponse.json({ ok: false }, { status: 500 });
+  }
 }
