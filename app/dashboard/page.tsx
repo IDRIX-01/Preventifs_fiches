@@ -16,7 +16,6 @@ export default async function Dashboard() {
   const userId = (session.user as any).id as string;
   const userName = session.user?.name as string;
 
-
   let assignedTemplateIds: Set<string> | null = null;
   if (role === Role.MACHINISTE || role === Role.MAINTENANCIER) {
     const user = await prisma.user.findUnique({
@@ -26,7 +25,6 @@ export default async function Dashboard() {
     const ids = user?.assignedTemplates?.map((t) => t.id) ?? [];
     assignedTemplateIds = ids.length > 0 ? new Set(ids) : null;
   }
-
 
   const roleFilter =
     role === Role.ADMIN
@@ -51,10 +49,15 @@ export default async function Dashboard() {
     where: {
       AND: [roleFilter, { status: { not: "ARCHIVE" } }],
     },
-    include: { template: true, signatures: true },
+    include: {
+      template: true,
+      // On inclut l'utilisateur de chaque signature pour récupérer le matricule (username)
+      signatures: {
+        include: { user: { select: { username: true } } },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
-
 
   const fiches = assignedTemplateIds
     ? fichesBrutes.filter(
@@ -70,6 +73,31 @@ export default async function Dashboard() {
   }, {});
 
   const systemes = Object.keys(fichesParSysteme).sort();
+
+  // Table nom -> matricule des chefs d'équipe (secours quand superviseurUsername est vide).
+  // Inutile pour les machinistes/maintenanciers, qui n'ont pas ce tableau.
+  const matriculeParNomChef = new Map<string, string>();
+  if (role !== Role.MACHINISTE && role !== Role.MAINTENANCIER) {
+    const chefs = await prisma.user.findMany({
+      where: { role: Role.CHEF_EQUIPE },
+      select: { name: true, username: true },
+    });
+    for (const c of chefs) {
+      if (!matriculeParNomChef.has(c.name)) matriculeParNomChef.set(c.name, c.username);
+    }
+  }
+
+  // Matricule du chef d'équipe d'une fiche :
+  // 1) signature du chef d'équipe, 2) superviseurUsername, 3) recherche par nom du superviseur
+  const getMatriculeChef = (f: (typeof fiches)[number]): string | null => {
+    const signatureChef = f.signatures.find((s) => s.role === Role.CHEF_EQUIPE);
+    return (
+      signatureChef?.user?.username ??
+      f.superviseurUsername ??
+      matriculeParNomChef.get(f.superviseur) ??
+      null
+    );
+  };
 
   // Version allégée et sérialisable (pas d'objets Date) à passer au
   // composant client MachinisteFicheSelector.
@@ -138,20 +166,26 @@ export default async function Dashboard() {
 
               {/* MOBILE (< sm) : cartes empilées */}
               <div className="sm:hidden space-y-2">
-                {fichesParSysteme[systeme].map((f) => (
-                  <div key={f.id} className="bg-white rounded shadow-sm p-4 text-sm">
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="font-semibold">{f.numeroOT}</span>
-                      <Link href={`/fiches/${f.id}`} className="text-blue-600 hover:underline">
-                        Ouvrir
-                      </Link>
+                {fichesParSysteme[systeme].map((f) => {
+                  const matricule = getMatriculeChef(f);
+                  return (
+                    <div key={f.id} className="bg-white rounded shadow-sm p-4 text-sm">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-semibold">{f.numeroOT}</span>
+                        <Link href={`/fiches/${f.id}`} className="text-blue-600 hover:underline">
+                          Ouvrir
+                        </Link>
+                      </div>
+                      <div className="text-gray-600 space-y-0.5">
+                        <div>{f.template.titre}</div>
+                        <div>
+                          {ROLE_LABELS[f.status as Role] ?? f.status}
+                          {matricule ? ` (${matricule})` : ""}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-gray-600 space-y-0.5">
-                      <div>{f.template.titre}</div>
-                      <div>{ROLE_LABELS[f.status as Role] ?? f.status}</div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* DESKTOP (>= sm) : tableau, avec scroll horizontal de secours */}
@@ -162,22 +196,27 @@ export default async function Dashboard() {
                       <th className="p-2">N° OT</th>
                       <th className="p-2">Fiche</th>
                       <th className="p-2">Statut</th>
+                      <th className="p-2">ID</th>
                       <th className="p-2">Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {fichesParSysteme[systeme].map((f) => (
-                      <tr key={f.id} className="border-t text-sm">
-                        <td className="p-2">{f.numeroOT}</td>
-                        <td className="p-2">{f.template.titre}</td>
-                        <td className="p-2">{ROLE_LABELS[f.status as Role] ?? f.status}</td>
-                        <td className="p-2">
-                          <Link href={`/fiches/${f.id}`} className="text-blue-600 hover:underline">
-                            Ouvrir
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
+                    {fichesParSysteme[systeme].map((f) => {
+                      const matricule = getMatriculeChef(f);
+                      return (
+                        <tr key={f.id} className="border-t text-sm">
+                          <td className="p-2">{f.numeroOT}</td>
+                          <td className="p-2">{f.template.titre}</td>
+                          <td className="p-2">{ROLE_LABELS[f.status as Role] ?? f.status}</td>
+                          <td className="p-2">{matricule ? `(${matricule})` : "-"}</td>
+                          <td className="p-2">
+                            <Link href={`/fiches/${f.id}`} className="text-blue-600 hover:underline">
+                              Ouvrir
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

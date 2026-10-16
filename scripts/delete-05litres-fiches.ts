@@ -18,6 +18,7 @@ async function main() {
     where: { id: { in: ficheIds } },
   });
   console.log(`${deletedFiches.count} fiche(s) supprimée(s).`);
+  
 }
 
 main().finally(() => prisma.$disconnect());

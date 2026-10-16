@@ -23,7 +23,6 @@ function str(v: string | string[] | undefined): string {
   return v ?? "";
 }
 
-// Construit l'URL de la page `p` en conservant les filtres actifs
 function buildPageHref(
   p: number,
   filtres: { systeme: string; dateDebut: string; dateFin: string }
@@ -62,15 +61,12 @@ export default async function ArchivesPage({
     orderBy: { systeme: "asc" },
   });
 
-  // La recherche dans /admin/archives ne doit remonter que les fiches
-  // archivées, quels que soient les autres critères saisis (ligne, dates).
+
   const where: Prisma.FicheInstanceWhereInput = { status: "ARCHIVE" };
 
   if (systeme) where.template = { systeme };
 
-  // Filtre par plage de dates sur `datePrevue`. Les deux bornes sont
-  // optionnelles et indépendantes : on peut ne renseigner que "Du", que
-  // "Au", ou les deux.
+
   if (dateDebut || dateFin) {
     const datePrevueFilter: Prisma.DateTimeFilter = {};
 
@@ -79,8 +75,7 @@ export default async function ArchivesPage({
     }
 
     if (dateFin) {
-      // On inclut toute la journée de fin (jusqu'à 23:59:59.999) en
-      // comparant à minuit du jour suivant avec un `lt`.
+ 
       const finInclusive = new Date(dateFin);
       finInclusive.setDate(finInclusive.getDate() + 1);
       datePrevueFilter.lt = finInclusive;
@@ -89,7 +84,6 @@ export default async function ArchivesPage({
     where.datePrevue = datePrevueFilter;
   }
 
-  // Pagination : total des fiches correspondant aux filtres, puis page demandée
   const total = await prisma.ficheInstance.count({ where });
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(pageCourante, totalPages); // évite une page hors limites
@@ -106,9 +100,7 @@ export default async function ArchivesPage({
   const filtres = { systeme, dateDebut, dateFin };
 
   return (
-    // px-4 sur mobile, plus large sur desktop ; padding vertical réduit sur mobile
     <div className="max-w-6xl mx-auto px-4 py-4 sm:p-6">
-      {/* Empile le titre et le lien au-dessus l'un de l'autre sur mobile */}
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center mb-6">
         <h1 className="text-lg sm:text-xl font-bold">Recherche dans les archives</h1>
         <Link href="/dashboard" className="text-blue-600 hover:underline text-sm">
@@ -116,7 +108,6 @@ export default async function ArchivesPage({
         </Link>
       </div>
 
-      {/* 1 colonne sur mobile, 4 colonnes à partir de md (ligne + 2 dates + boutons) */}
       <form
         method="get"
         className="bg-white rounded shadow-sm p-4 sm:p-6 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4"
@@ -178,7 +169,6 @@ export default async function ArchivesPage({
 
       {results.length > 0 && (
         <>
-          {/* MOBILE (< sm) : cartes empilées au lieu d'un tableau illisible */}
           <div className="sm:hidden space-y-3">
             {results.map((f, index) => {
               const numero = offset + index + 1;
@@ -207,7 +197,6 @@ export default async function ArchivesPage({
             })}
           </div>
 
-          {/* DESKTOP (>= sm) : tableau classique avec scroll horizontal de secours */}
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full bg-white rounded shadow-sm overflow-hidden">
               <thead className="bg-gray-200 text-left text-sm">
@@ -251,7 +240,6 @@ export default async function ArchivesPage({
         </>
       )}
 
-      {/* Barre de pagination */}
       {total > 0 && (
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm">
           <p className="text-gray-500 text-center sm:text-left">

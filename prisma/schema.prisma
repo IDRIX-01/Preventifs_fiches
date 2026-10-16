@@ -11,6 +11,7 @@ model User {
   id                String           @id @default(cuid())
   name              String
   username          String           @unique
+  code String? @unique
   passwordHash      String
   role              String
   actif     Boolean  @default(true)   
