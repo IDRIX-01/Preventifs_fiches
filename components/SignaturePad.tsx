@@ -11,6 +11,7 @@ export default function SignaturePad({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isEmpty, setIsEmpty] = useState(true);
+  const [savedSignature, setSavedSignature] = useState<string | null>(null);
   const drawing = useRef(false);
 
   useEffect(() => {
@@ -21,11 +22,34 @@ export default function SignaturePad({
     ctx.strokeStyle = "#111";
   }, []);
 
+  // Charge la signature enregistrée de l'utilisateur connecté (si elle existe)
+  useEffect(() => {
+    let annule = false;
+    fetch("/api/me/signature")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!annule) setSavedSignature(data?.signature ?? null);
+      })
+      .catch(() => {
+        if (!annule) setSavedSignature(null);
+      });
+    return () => {
+      annule = true;
+    };
+  }, []);
+
   function getPos(e: React.MouseEvent | React.TouchEvent) {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
     const point = "touches" in e ? e.touches[0] : e;
-    return { x: point.clientX - rect.left, y: point.clientY - rect.top };
+    // Le canvas fait 400x180 en interne mais peut être affiché plus petit :
+    // on corrige l'échelle pour que le trait suive bien le doigt/la souris.
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (point.clientX - rect.left) * scaleX,
+      y: (point.clientY - rect.top) * scaleY,
+    };
   }
 
   function start(e: React.MouseEvent | React.TouchEvent) {
@@ -56,6 +80,27 @@ export default function SignaturePad({
     setIsEmpty(true);
   }
 
+  // Dessine la signature enregistrée dans le cadre, centrée et à l'échelle
+  function utiliserSignatureEnregistree() {
+    if (!savedSignature) return;
+    const canvas = canvasRef.current!;
+    const ctx = canvas.getContext("2d")!;
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const ratio = Math.min(
+        (canvas.width * 0.9) / img.width,
+        (canvas.height * 0.9) / img.height,
+        1
+      );
+      const w = img.width * ratio;
+      const h = img.height * ratio;
+      ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+      setIsEmpty(false);
+    };
+    img.src = savedSignature;
+  }
+
   function confirm() {
     if (isEmpty) return;
     onConfirm(canvasRef.current!.toDataURL("image/png"));
@@ -65,6 +110,17 @@ export default function SignaturePad({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl p-4 w-full max-w-md">
         <h3 className="font-bold text-center mb-2">Votre signature</h3>
+
+        {savedSignature && (
+          <button
+            type="button"
+            onClick={utiliserSignatureEnregistree}
+            className="w-full mb-2 border border-blue-600 text-blue-700 text-sm py-1.5 rounded hover:bg-blue-50"
+          >
+            Utiliser ma signature enregistrée
+          </button>
+        )}
+
         <canvas
           ref={canvasRef}
           width={400}

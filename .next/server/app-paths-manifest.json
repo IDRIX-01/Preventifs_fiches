@@ -1,6 +1,10 @@
 {
+  "/page": "app/page.js",
   "/login/page": "app/login/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
-  "/page": "app/page.js"
+  "/fiches/[id]/page": "app/fiches/[id]/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/api/fiches/[id]/route": "app/api/fiches/[id]/route.js",
+  "/api/admin/users/route": "app/api/admin/users/route.js",
+  "/api/me/signature/route": "app/api/me/signature/route.js"
 }

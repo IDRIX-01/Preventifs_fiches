@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Role } from "@/lib/enums";
 import SignaturePad from "./SignaturePad";
 
@@ -15,6 +15,15 @@ const CHEF_EQUIPE_MAINTENANCE = {
 // (actionsCochees, heures, observation) une fois la fiche arrivée à leur étape.
 // Seul le chef d'équipe a ce droit.
 const ROLES_AVEC_DROIT_MODIFICATION = [Role.CHEF_EQUIPE];
+
+// Rôles ayant une signature enregistrée en base (User.signatureImage),
+// utilisable à la place de la signature manuelle.
+const ROLES_AVEC_SIGNATURE_ENREGISTREE: Role[] = [
+  Role.CHEF_EQUIPE,
+  Role.RESPONSABLE_PRODUCTION,
+  Role.RESPONSABLE_MAINTENANCE,
+  Role.DIRECTEUR_TECHNIQUE,
+];
 
 // Signature du Directeur Technique restreinte selon l'équipement (UAP1 uniquement).
 // Pour tout équipement non listé ici, n'importe quel directeur connecté peut signer
@@ -93,6 +102,35 @@ export default function FicheView({
       : null
   );
   const [signingRole, setSigningRole] = useState<Role | null>(null);
+
+  // Signature enregistrée en base pour l'utilisateur connecté (data URL) ou null
+  const [savedSignature, setSavedSignature] = useState<string | null>(null);
+  const [signingSaved, setSigningSaved] = useState(false);
+
+  useEffect(() => {
+    // On ne charge la signature que pour les rôles concernés et quand
+    // la fiche est à une étape où l'utilisateur peut signer.
+    if (!editable || !ROLES_AVEC_SIGNATURE_ENREGISTREE.includes(currentUserRole)) return;
+    let annule = false;
+    fetch("/api/me/signature")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!annule) setSavedSignature(data?.signature ?? null);
+      })
+      .catch(() => {
+        if (!annule) setSavedSignature(null);
+      });
+    return () => {
+      annule = true;
+    };
+  }, [editable, currentUserRole]);
+
+  function handleSignerAvecEnregistree() {
+    if (!savedSignature || !onSign) return;
+    if (!confirm("Valider et transmettre cette fiche avec votre signature enregistrée ?")) return;
+    setSigningSaved(true);
+    onSign(savedSignature);
+  }
 
   function handleTransmettre() {
     if (!chefEquipeChoice) {
@@ -372,6 +410,9 @@ export default function FicheView({
             currentUserName={currentUserName}
             editable={editable}
             onOpenSign={() => setSigningRole(Role.CHEF_EQUIPE)}
+            savedSignature={savedSignature}
+            onSignSaved={handleSignerAvecEnregistree}
+            signingSaved={signingSaved}
           />
           <SignatureCell
             label="Responsable Production"
@@ -381,6 +422,9 @@ export default function FicheView({
             currentUserName={currentUserName}
             editable={editable}
             onOpenSign={() => setSigningRole(Role.RESPONSABLE_PRODUCTION)}
+            savedSignature={savedSignature}
+            onSignSaved={handleSignerAvecEnregistree}
+            signingSaved={signingSaved}
           />
           <SignatureCell
             label="Responsable Maintenance"
@@ -390,6 +434,9 @@ export default function FicheView({
             currentUserName={currentUserName}
             editable={editable}
             onOpenSign={() => setSigningRole(Role.RESPONSABLE_MAINTENANCE)}
+            savedSignature={savedSignature}
+            onSignSaved={handleSignerAvecEnregistree}
+            signingSaved={signingSaved}
           />
           <SignatureCell
             label="Directeur Technique"
@@ -400,6 +447,9 @@ export default function FicheView({
             equipement={t.systeme}
             editable={editable}
             onOpenSign={() => setSigningRole(Role.DIRECTEUR_TECHNIQUE)}
+            savedSignature={savedSignature}
+            onSignSaved={handleSignerAvecEnregistree}
+            signingSaved={signingSaved}
           />
         </div>
       </Section>
@@ -453,6 +503,9 @@ function SignatureCell({
   equipement,
   editable,
   onOpenSign,
+  savedSignature,
+  onSignSaved,
+  signingSaved,
 }: {
   label: string;
   name?: string;
@@ -463,6 +516,9 @@ function SignatureCell({
   equipement?: string;
   editable: boolean;
   onOpenSign: () => void;
+  savedSignature?: string | null;
+  onSignSaved?: () => void;
+  signingSaved?: boolean;
 }) {
   const sig = signatures?.find((s) => s.role === role);
 
@@ -492,12 +548,31 @@ function SignatureCell({
           {new Date(sig.signedAt).toLocaleString("fr-FR")}
         </div>
       ) : canSign ? (
-        <button
-          onClick={onOpenSign}
-          className="bg-green-600 text-white text-xs py-1 rounded hover:bg-green-700"
-        >
-          Signer et transmettre
-        </button>
+        <div className="flex flex-col gap-1 mt-1">
+          {savedSignature && (
+            <>
+              <img
+                src={savedSignature}
+                alt="Ma signature enregistrée"
+                className="h-8 object-contain self-start"
+              />
+              <button
+                onClick={onSignSaved}
+                disabled={signingSaved}
+                className="bg-blue-600 text-white text-xs py-1 rounded hover:bg-blue-700 disabled:opacity-60"
+              >
+                {signingSaved ? "Envoi..." : "Signer avec ma signature enregistrée"}
+              </button>
+            </>
+          )}
+          <button
+            onClick={onOpenSign}
+            disabled={signingSaved}
+            className="bg-green-600 text-white text-xs py-1 rounded hover:bg-green-700 disabled:opacity-60"
+          >
+            {savedSignature ? "Signer manuellement" : "Signer et transmettre"}
+          </button>
+        </div>
       ) : editable &&
         currentUserRole === role &&
         !sig &&

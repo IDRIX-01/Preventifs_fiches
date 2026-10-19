@@ -11,6 +11,7 @@ model User {
   id                String           @id @default(cuid())
   name              String
   username          String           @unique
+  signatureImage String? @db.Text   // data URL : "data:image/png;base64,...."
   passwordHash      String
   role              String
   actif     Boolean  @default(true)   
