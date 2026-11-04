@@ -22,7 +22,6 @@ export default function SignaturePad({
     ctx.strokeStyle = "#111";
   }, []);
 
-  // Charge la signature enregistrée de l'utilisateur connecté (si elle existe)
   useEffect(() => {
     let annule = false;
     fetch("/api/me/signature")
@@ -42,8 +41,7 @@ export default function SignaturePad({
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
     const point = "touches" in e ? e.touches[0] : e;
-    // Le canvas fait 400x180 en interne mais peut être affiché plus petit :
-    // on corrige l'échelle pour que le trait suive bien le doigt/la souris.
+
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     return {

@@ -1,70 +1,46 @@
 import { prisma } from "@/lib/prisma";
 
-// Ordre du workflow (le statut ARCHIVE est l'état final)
-const WORKFLOW = [
-  "MACHINISTE",
-  "CHEF_EQUIPE",
-  "RESPONSABLE_PRODUCTION",
-  "RESPONSABLE_MAINTENANCE",
-  "DIRECTEUR_TECHNIQUE",
-] as const;
-
+const CONFIRM = process.argv.includes("--confirm");
+const SEMAINE = process.argv.find((a) => a.startsWith("--semaine="))?.split("=")[1];
+const MOTIF =
+  process.argv.find((a) => a.startsWith("--motif="))?.split("=")[1] ??
+  "Clôture administrative : fiche non renseignée, aucune intervention enregistrée";
+const OT = process.argv.find((a) => a.startsWith("--ot="))?.split("=")[1];
 async function main() {
-  const dryRun = process.argv.includes("--dry");
-
-  // Un utilisateur par rôle, pour attribuer les signatures
-  const users = await prisma.user.findMany();
-  const userParRole = new Map<string, string>();
-  for (const u of users) {
-    if (!userParRole.has(u.role)) userParRole.set(u.role, u.id);
+  if (!SEMAINE) {
+    console.error("Précise la semaine à clôturer, ex. --semaine=2026W42");
+    process.exit(1);
   }
+  console.log(CONFIRM ? "MODE ÉCRITURE" : "SIMULATION (ajouter --confirm pour écrire)");
 
   const fiches = await prisma.ficheInstance.findMany({
-    where: { status: { not: "ARCHIVE" } },
-    include: { signatures: true }, // ADAPTER : nom de la relation
+    where: {
+    status: { not: "ARCHIVE" },
+  ...(OT ? { numeroOT: { in: OT.split(",") } } : {}),
+    },
+    include: { signatures: true },
   });
 
-  console.log(`${fiches.length} fiche(s) à signer et archiver.`);
-
-  let nbSignatures = 0;
-
-  for (const fiche of fiches) {
-    // Rôles ayant déjà signé
-    const dejaSignes = new Set(fiche.signatures.map((s) => s.role)); // ADAPTER : champ "role"
-
-    for (const role of WORKFLOW) {
-      if (dejaSignes.has(role)) continue;
-
-      const userId = userParRole.get(role);
-      if (!userId) {
-        console.warn(`Aucun utilisateur ${role}, signature ignorée (fiche ${fiche.id}).`);
-        continue;
-      }
-
-      if (!dryRun) {
-        await prisma.ficheSignature.create({
-          data: {
-            ficheId: fiche.id, // ADAPTER : nom de la clé étrangère
-            userId,            // ADAPTER
-            role,              // ADAPTER
-            // signedAt: new Date(), // ADAPTER : si le champ n'a pas de default(now())
-          },
-        });
-      }
-      nbSignatures++;
-    }
-
-    if (!dryRun) {
-      await prisma.ficheInstance.update({
-        where: { id: fiche.id },
-        data: { status: "ARCHIVE" },
-      });
-    }
-  }
-
-  console.log(
-    `${dryRun ? "[SIMULATION] " : ""}${nbSignatures} signature(s) créée(s), ${fiches.length} fiche(s) archivée(s).`
+  const cibles = fiches.filter(
+    (f: any) => !f.machinisteNom && !f.dateEntretien && f.signatures.length === 0
   );
+  const epargnees = fiches.length - cibles.length;
+
+  console.log(`${fiches.length} fiche(s) non archivée(s) pour ${SEMAINE}`);
+  console.log(`${cibles.length} à clôturer, ${epargnees} épargnée(s) (renseignées ou déjà signées)`);
+
+  if (CONFIRM && cibles.length) {
+    const res = await prisma.ficheInstance.updateMany({
+      where: { id: { in: cibles.map((f: any) => f.id) } },
+      data: {
+        status: "ARCHIVE",
+        clotureAdministrative: true,
+        motifCloture: MOTIF,
+        clotureLe: new Date(),
+      },
+    });
+    console.log(`${res.count} fiche(s) clôturée(s) et archivée(s).`);
+  }
 }
 
 main()

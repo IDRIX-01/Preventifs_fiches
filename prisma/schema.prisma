@@ -55,6 +55,9 @@ model FicheInstance {
   datePrevue          DateTime
   dateFinPrevue       DateTime
   status              String           @default("BROUILLON")
+  clotureAdministrative Boolean   @default(false)
+  motifCloture          String?
+  clotureLe             DateTime?
   machinisteNom       String?
   dateEntretien       DateTime?
   actionsCochees      String?
