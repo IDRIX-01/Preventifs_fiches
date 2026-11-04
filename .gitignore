@@ -1,2 +1,15 @@
+# dépendances
 node_modules
+
+# build Next.js
 .next/
+out/
+
+# variables d'environnement (secrets)
+.env
+.env*.local
+
+# divers
+.DS_Store
+*.log
+next-env.d.ts
