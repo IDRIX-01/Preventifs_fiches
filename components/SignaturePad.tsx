@@ -12,6 +12,8 @@ export default function SignaturePad({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isEmpty, setIsEmpty] = useState(true);
   const [savedSignature, setSavedSignature] = useState<string | null>(null);
+  // true tant que le canvas contient uniquement la signature enregistrée, non modifiée
+  const [usingSaved, setUsingSaved] = useState(false);
   const drawing = useRef(false);
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export default function SignaturePad({
 
   useEffect(() => {
     let annule = false;
-    fetch("/api/me/signature")
+    fetch("/api/me/signature", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!annule) setSavedSignature(data?.signature ?? null);
@@ -41,6 +43,7 @@ export default function SignaturePad({
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
     const point = "touches" in e ? e.touches[0] : e;
+    if (!point) return null;
 
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -51,18 +54,21 @@ export default function SignaturePad({
   }
 
   function start(e: React.MouseEvent | React.TouchEvent) {
+    const pos = getPos(e);
+    if (!pos) return;
     drawing.current = true;
+    setUsingSaved(false); // on dessine : le canvas fait désormais foi
     const ctx = canvasRef.current!.getContext("2d")!;
-    const { x, y } = getPos(e);
     ctx.beginPath();
-    ctx.moveTo(x, y);
+    ctx.moveTo(pos.x, pos.y);
   }
 
   function move(e: React.MouseEvent | React.TouchEvent) {
     if (!drawing.current) return;
+    const pos = getPos(e);
+    if (!pos) return;
     const ctx = canvasRef.current!.getContext("2d")!;
-    const { x, y } = getPos(e);
-    ctx.lineTo(x, y);
+    ctx.lineTo(pos.x, pos.y);
     ctx.stroke();
     setIsEmpty(false);
   }
@@ -76,9 +82,10 @@ export default function SignaturePad({
     const ctx = canvas.getContext("2d")!;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setIsEmpty(true);
+    setUsingSaved(false);
   }
 
-  // Dessine la signature enregistrée dans le cadre, centrée et à l'échelle
+  // Affiche la signature enregistrée dans le cadre, centrée et à l'échelle
   function utiliserSignatureEnregistree() {
     if (!savedSignature) return;
     const canvas = canvasRef.current!;
@@ -95,12 +102,21 @@ export default function SignaturePad({
       const h = img.height * ratio;
       ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
       setIsEmpty(false);
+      setUsingSaved(true);
+    };
+    img.onerror = () => {
+      setSavedSignature(null); // image illisible : on masque le bouton
     };
     img.src = savedSignature;
   }
 
   function confirm() {
     if (isEmpty) return;
+    // Signature enregistrée non modifiée : on envoie l'original (pleine qualité)
+    if (usingSaved && savedSignature) {
+      onConfirm(savedSignature);
+      return;
+    }
     onConfirm(canvasRef.current!.toDataURL("image/png"));
   }
 
@@ -133,17 +149,23 @@ export default function SignaturePad({
           onTouchEnd={end}
         />
         <div className="flex justify-between mt-3 gap-2">
-          <button onClick={clear} className="text-sm text-gray-500 hover:underline">
+          <button
+            type="button"
+            onClick={clear}
+            className="text-sm text-gray-500 hover:underline"
+          >
             Effacer
           </button>
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={onCancel}
               className="px-3 py-1.5 text-sm rounded border border-gray-300 hover:bg-gray-50"
             >
               Annuler
             </button>
             <button
+              type="button"
               onClick={confirm}
               disabled={isEmpty}
               className="px-3 py-1.5 text-sm rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-40"
